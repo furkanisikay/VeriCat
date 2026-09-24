@@ -39,11 +39,37 @@ internal sealed class MenuRenderer : ToolStripRenderer
 
     protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
     {
+        if (e.Item is ToggleMenuItem toggle && ToggleMenuItem.IsReserve(e.Text))
+        {
+            DrawToggleState(e.Graphics, e.TextRectangle, toggle.IsOn, e.Item.Owner?.DeviceDpi / 96f ?? 1);
+            return;
+        }
         e.TextColor = !e.Item.Enabled ? P.Subtle
             : e.Item.Tag is MenuTag.Danger ? P.Danger
             : e.Item.Tag is MenuTag.Highlight ? P.Accent
             : P.Text;
         base.OnRenderItemText(e);
+    }
+
+    /// <summary>Kısayol sütununa "Açık/Kapalı" yazısı ve anahtar: açıkken vurgu renginde dolu, kapalıyken gri.</summary>
+    static void DrawToggleState(Graphics g, Rectangle area, bool on, float k)
+    {
+        var p = P;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        float w = 30 * k, h = 17 * k;
+        var r = new RectangleF(area.Right - w, area.Y + (area.Height - h) / 2, w, h);
+        using (var track = RoundRect(r, h / 2))
+        {
+            using var b = new SolidBrush(on ? p.Accent : p.Track);
+            g.FillPath(b, track);
+        }
+        float knob = h - 5 * k;
+        float x = on ? r.Right - knob - 2.5f * k : r.X + 2.5f * k;
+        using (var kb = new SolidBrush(on ? p.AccentText : p.Surface)) g.FillEllipse(kb, x, r.Y + 2.5f * k, knob, knob);
+
+        var label = new Rectangle(area.X, area.Y, (int)(r.X - area.X - 6 * k), area.Height);
+        TextRenderer.DrawText(g, on ? "Açık" : "Kapalı", on ? Theme.UiBold : Theme.UiFont, label, on ? p.Accent : p.Subtle,
+            TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)

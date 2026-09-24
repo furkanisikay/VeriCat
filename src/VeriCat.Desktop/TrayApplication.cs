@@ -321,17 +321,30 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
 
         m.Items.Add(new ToolStripSeparator());
         m.Items.Add(MenuStyle.Caption("DAVRANIŞ"));
-        m.Items.Add(Toggle("Pencerelerin üstüne çıksın", Glyph.Window, icon, () => settings.Windows, v => { settings.Windows = v; RefreshWorld(); }));
-        m.Items.Add(Toggle("Pencere içlerine de zıplasın", Glyph.Layers, icon, () => settings.InnerWindows, v => { settings.InnerWindows = v; RefreshWorld(); }));
-        m.Items.Add(Toggle("Fareyi kovalasın", Glyph.Target, icon, () => settings.Chase, v => settings.Chase = v));
-        m.Items.Add(Toggle("Yumruk imleci itsin", Glyph.Fist, icon, () => settings.PunchCursor, v => settings.PunchCursor = v));
-        m.Items.Add(Toggle("Tasmada isim görünsün", Glyph.Tag, icon, () => settings.ShowNames, v => settings.ShowNames = v));
-        m.Items.Add(Toggle("Tam ekranda saklansın", Glyph.EyeOff, icon, () => settings.HideInFullscreen, v => settings.HideInFullscreen = v));
-        m.Items.Add(Toggle("Ses", Glyph.Sound, icon, () => settings.Sound, v => settings.Sound = v));
+        // Her ayar açılınca etkisi hemen görünür (menü açık kalır), üstüne gelince ne yaptığı yazar.
+        m.Items.Add(Toggle("Pencerelerin üstüne çıksın", Glyph.Window, icon, () => settings.Windows,
+            v => { settings.Windows = v; RefreshWorld(); if (v) HopOne(); },
+            "Kediler açık pencerelerin üst kenarında yürür ve aralarında zıplar. Kapatınca pencerelerdeki kediler aşağı iner."));
+        m.Items.Add(Toggle("Pencere içlerine de zıplasın", Glyph.Layers, icon, () => settings.InnerWindows,
+            v => { settings.InnerWindows = v; RefreshWorld(); if (v) HopOne(); },
+            "Ara ara pencerelerin içindeki bölümlere (araç çubuğu, panel, liste) de çıkarlar. Klasik Windows uygulamalarında belirgindir; Chrome gibi tarayıcılarda çalışmaz."));
+        m.Items.Add(Toggle("Fareyi kovalasın", Glyph.Target, icon, () => settings.Chase,
+            v => { settings.Chase = v; foreach (var c in colony.Cats) { if (v) c.PlayWithPointer(); else c.StopHunting(); } },
+            "Kediler imleci kovalar, pusuya yatar, üstüne atlar ve yumruklar."));
+        m.Items.Add(Toggle("Yumruk imleci itsin", Glyph.Fist, icon, () => settings.PunchCursor,
+            v => { settings.PunchCursor = v; if (v && settings.Chase) foreach (var c in colony.Cats) c.PlayWithPointer(); },
+            "Kedinin yumruğu imlece isabet edince imleç biraz itilir. Fare tuşu basılıyken hiçbir zaman itmez."));
+        m.Items.Add(Toggle("Tasmada isim görünsün", Glyph.Tag, icon, () => settings.ShowNames, v => settings.ShowNames = v,
+            "Her kedinin tasmasında adının yazdığı etiket."));
+        m.Items.Add(Toggle("Tam ekranda saklansın", Glyph.EyeOff, icon, () => settings.HideInFullscreen, v => settings.HideInFullscreen = v,
+            "Oyun, video ya da sunum tam ekrandayken kediler gizlenir ve arka planda hiçbir şey çalışmaz; çıkınca geri gelirler."));
+        m.Items.Add(Toggle("Ses", Glyph.Sound, icon, () => settings.Sound, v => { settings.Sound = v; if (v) colony.Cats.FirstOrDefault()?.Meow(); },
+            "Miyavlama, mırlama, tıslama ve pati sesleri."));
 
         m.Items.Add(new ToolStripSeparator());
         m.Items.Add(MenuStyle.Caption("UYGULAMA"));
-        m.Items.Add(Toggle("Windows ile başlat", Glyph.Power, icon, () => AutoStart.IsEnabled, AutoStart.Set));
+        m.Items.Add(Toggle("Windows ile başlat", Glyph.Power, icon, () => AutoStart.IsEnabled, AutoStart.Set,
+            "Bilgisayar açılınca VeriCat da açılır."));
 
         var upd = MenuStyle.Submenu("Güncellemeler", Glyph.Update, icon);
         foreach (var (name, mode) in new[] { ("Otomatik yükle", UpdateMode.Automatic), ("Sorarak yükle", UpdateMode.Notify), ("Kapalı", UpdateMode.Off) })
@@ -350,8 +363,15 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         MenuStyle.StyleSubmenus(m.Items);
     }
 
-    ToggleMenuItem Toggle(string title, Glyph glyph, int icon, Func<bool> get, Action<bool> set) =>
-        MenuStyle.Toggle(title, glyph, icon, get, v => { set(v); Save(); });
+    ToggleMenuItem Toggle(string title, Glyph glyph, int icon, Func<bool> get, Action<bool> set, string tip) =>
+        MenuStyle.Toggle(title, glyph, icon, get, v => { set(v); Save(); }, tip);
+
+    /// <summary>Ayar açılınca etkisi görünsün: boştaki kedilerden biri hemen bir pencereye zıplar.</summary>
+    void HopOne()
+    {
+        foreach (var c in colony.Cats.OrderBy(_ => Random.Shared.Next()))
+            if (c.Hop()) return;
+    }
 
     void MeowAll()
     {

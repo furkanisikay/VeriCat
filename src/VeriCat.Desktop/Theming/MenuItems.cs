@@ -3,49 +3,48 @@ using VeriCat.Desktop.Native;
 
 namespace VeriCat.Desktop.Theming;
 
-/// <summary>Sağında açma/kapama anahtarı olan menü öğesi. Tıklanınca menü kapanmaz.</summary>
+/// <summary>
+/// Açılıp kapanan ayar. Sağda "Açık/Kapalı" yazısı ve bir anahtar gösterir; açıkken ikon ve yazı vurgu renginde.
+/// Yer, menünün kısayol sütunu ayrılarak açılır (menü düzeni bu sütunun genişliğini her zaman hesaba katar),
+/// çizimi <see cref="MenuRenderer"/> yapar. Tıklanınca menü kapanmaz, böylece değişikliğin etkisi hemen görülür.
+/// </summary>
 internal sealed class ToggleMenuItem : ToolStripMenuItem
 {
+    /// <summary>
+    /// Kısayol sütununda yer ayırmak için ölçülen metin: en uzun durum yazısı + anahtar genişliği kadar geniş harf.
+    /// Hiçbir zaman ekrana yazılmaz (boşluk karakteri kullanılmadı çünkü sondaki boşluklar ölçümde atılabilir).
+    /// </summary>
+    const string Reserve = "Kapalı MMMM";
+
     readonly Func<bool> get;
     readonly Action<bool> set;
+    readonly Glyph glyph;
+    readonly int iconSize;
 
-    public ToggleMenuItem(string text, Image? image, Func<bool> get, Action<bool> set) : base(text, image)
+    public ToggleMenuItem(string text, Glyph glyph, int iconSize, Func<bool> get, Action<bool> set) : base(text)
     {
         this.get = get;
         this.set = set;
+        this.glyph = glyph;
+        this.iconSize = iconSize;
+        ShortcutKeyDisplayString = Reserve;
+        ShowShortcutKeys = true;
+        RefreshLook();
     }
 
-    float K => Owner?.DeviceDpi / 96f ?? 1;
+    public bool IsOn => get();
 
-    public override Size GetPreferredSize(Size constrainingSize)
-    {
-        var s = base.GetPreferredSize(constrainingSize);
-        return new Size(s.Width + (int)(46 * K), s.Height);
-    }
+    public static bool IsReserve(string? text) => text == Reserve;
+
+    /// <summary>İkonu duruma göre renklendirir (açık: vurgu, kapalı: soluk).</summary>
+    void RefreshLook() => Image = Icons.Get(glyph, IsOn ? Theme.Current.Accent : Theme.Current.Subtle, iconSize);
 
     protected override void OnClick(EventArgs e)
     {
         set(!get());
+        RefreshLook();
         Invalidate();
         base.OnClick(e);
-    }
-
-    protected override void OnPaint(PaintEventArgs e)
-    {
-        base.OnPaint(e);
-        var p = Theme.Current;
-        bool on = get();
-        float k = K, w = 30 * k, h = 17 * k;
-        var r = new RectangleF(Width - w - 14 * k, (Height - h) / 2, w, h);
-        var g = e.Graphics;
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        using (var track = MenuRenderer.RoundRect(r, h / 2))
-        using (var b = new SolidBrush(on ? p.Accent : p.Track))
-            g.FillPath(b, track);
-        float knob = h - 5 * k;
-        float x = on ? r.Right - knob - 2.5f * k : r.X + 2.5f * k;
-        using var kb = new SolidBrush(on ? p.AccentText : p.Surface);
-        g.FillEllipse(kb, x, r.Y + 2.5f * k, knob, knob);
     }
 }
 
@@ -112,6 +111,7 @@ internal static class MenuStyle
         menu.ShowImageMargin = true;
         menu.Padding = new Padding(2, 6, 2, 6);
         menu.ImageScalingSize = new Size(IconSize(menu), IconSize(menu));
+        menu.ShowItemToolTips = true;
         menu.HandleCreated += (_, _) => RoundCorners(menu.Handle);
 
         bool keepOpen = false;
@@ -150,8 +150,8 @@ internal static class MenuStyle
         return item;
     }
 
-    public static ToggleMenuItem Toggle(string text, Glyph glyph, int size, Func<bool> get, Action<bool> set) =>
-        new(text, Icons.Get(glyph, Theme.Current.Subtle, size), get, set) { Padding = new Padding(2, 3, 2, 3) };
+    public static ToggleMenuItem Toggle(string text, Glyph glyph, int size, Func<bool> get, Action<bool> set, string? tip = null) =>
+        new(text, glyph, size, get, set) { Padding = new Padding(2, 3, 2, 3), ToolTipText = tip };
 
     public static ToolStripMenuItem Submenu(string text, Glyph glyph, int size)
     {
