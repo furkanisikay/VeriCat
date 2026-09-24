@@ -17,6 +17,8 @@
     <!-- Yerel derlemeler 0.0.0'dır ve kendini güncellemez. Gerçek sürüm numarasını CI'da semantic-release verir. -->
     <Version>0.0.0</Version>
     <NeutralLanguage>tr-TR</NeutralLanguage>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/furkanisikay/VeriCat</RepositoryUrl>
   </PropertyGroup>
 
   <!-- Merkezi paket sürümleri: Directory.Packages.props -->
