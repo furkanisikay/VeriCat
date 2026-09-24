@@ -1,11 +1,10 @@
 name: CI
 
-# Her PR'da ve özellik dallarına push'ta: derle, test et, Windows exe'sini artefakt olarak yükle.
-# main/master'a gelen değişiklikler release.yml ile sürüm olarak yayınlanır.
+# Her PR'da (açılışta ve her yeni push'ta): derle, test et, Windows exe'sini artefakt olarak yükle.
+# Yalnızca pull_request'e bağlı: "push" da eklenirse PR dalına her push iki kez çalışır.
+# main/master'a merge sonrası testler release.yml'de çalışır. PR'sız bir dal için: Actions → CI → Run workflow.
 on:
   pull_request:
-  push:
-    branches-ignore: [main, master]
   workflow_dispatch:
 
 permissions:
