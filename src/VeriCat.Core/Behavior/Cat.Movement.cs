@@ -1,4 +1,5 @@
 using VeriCat.Core.Geometry;
+using VeriCat.Core.Rendering;
 
 namespace VeriCat.Core.Behavior;
 
@@ -7,7 +8,22 @@ public sealed partial class Cat
 {
     Platform? platform;
     RectU? riding;                                    // üstünde durduğu pencerenin son çerçevesi
+    double rideChangedAt;                             // pencerenin en son yer değiştirdiği an (hız için)
     double jx, jy;                                    // çömelme bitince uygulanacak zıplama hızı
+    bool flung;                                       // sallanan pencereden savruldu (şaşkın yüz)
+
+    /// <summary>Hızla sallanan pencereden savrulur: şaşırır, bağırır.</summary>
+    void Fling(double vxIn, double vyIn)
+    {
+        if (state == CatState.Fight) opponent = null;
+        state = CatState.Air; stateTime = 0;
+        vx = vxIn; vy = vyIn;
+        platform = null; riding = null;
+        flung = true;
+        pouncing = false;
+        Voice.Meow(Config.Pitch, scared: true);
+        ShowEmote(Emote.Surprised, 1.2);
+    }
 
     /// <summary>Şu an bastığı platform (havadaysa null).</summary>
     public Platform? Support => platform;
@@ -28,8 +44,22 @@ public sealed partial class Cat
             return false;
         }
         if (!World.Frames.TryGetValue(p.Owner, out var now)) return false;
-        if (riding is RectU old) px += now.MinX - old.MinX;
-        riding = now;
+        if (riding is RectU old && (old.MinX != now.MinX || old.MaxY != now.MaxY))
+        {
+            // Pencere taşındı: kedi de kayar. Çok hızlı sallandıysa eylemsizlikle savrulur.
+            double dx = now.MinX - old.MinX, dy = now.MaxY - old.MaxY;
+            double span = Math.Max(1 / 60.0, Now - rideChangedAt);
+            px += dx;
+            rideChangedAt = Now;
+            riding = now;
+            double wvx = dx / span, wvy = dy / span;
+            if (Math.Abs(wvx) > Props.Physics.FlingSpeed * D || wvy > Props.Physics.FlingSpeed * 0.8 * D)
+            {
+                Fling(wvx * 0.9, Math.Max(wvy * 0.9, 350 * D));
+                return false;
+            }
+        }
+        else if (riding == null) { riding = now; rideChangedAt = Now; }
         // Üst kenar ya da iç bölüm: aynı yüzeyin güncel hâlini bul (pencere boyutlanınca iç bölüm de kayabilir).
         foreach (var seg in World.Platforms)
         {
@@ -38,8 +68,8 @@ public sealed partial class Cat
         return false;
     }
 
-    /// <summary>Yürür. Duvara ya da kenara takılıp döndüyse false.</summary>
-    bool Stride(double dt, double speed, bool mayDrop)
+    /// <summary>Yürür. Duvara ya da kenara takılıp döndüyse false. <paramref name="forceDrop"/>: kenardan kesin atlar.</summary>
+    bool Stride(double dt, double speed, bool mayDrop, bool forceDrop = false)
     {
         double s = S, dir = Dir;
         px += dir * speed * dt;
@@ -54,7 +84,7 @@ public sealed partial class Cat
             px = Math.Clamp(px, p.MinX, p.MaxX); facingRight = !facingRight;
             return false;
         }
-        if (mayDrop && Rng.Next(3) == 0) { Drop(dir * speed); return true; }
+        if (forceDrop || (mayDrop && Rng.Next(3) == 0)) { Drop(dir * speed); return true; }
         px = Math.Clamp(px, p.MinX, p.MaxX); facingRight = !facingRight;
         return false;
     }
@@ -93,6 +123,26 @@ public sealed partial class Cat
     }
 
     double MaxJumpHeight => (260 + 160 * Config.Scale) * D;
+
+    /// <summary>Belirli bir platformdaki belirli bir noktaya zıplamayı dener (hedefe giderken). Erişilemiyorsa false.</summary>
+    bool TryJumpTo(Platform t, double x)
+    {
+        double s = S, reach = 450 * D;
+        double dy = t.Y - py;
+        if (dy > MaxJumpHeight || dy < -700 * D || !FitsUnderScreenTop(t)) return false;
+        double tx = Math.Clamp(x, t.MinX + 20 * s, t.MaxX - 20 * s);
+        if (Math.Abs(tx - px) > reach) return false;
+        double apex = Math.Max(py, t.Y) + 40 * D + 30 * s;
+        double v = Math.Sqrt(2 * Gravity * (apex - py));
+        double time = v / Gravity + Math.Sqrt(2 * (apex - t.Y) / Gravity);
+        jx = (tx - px) / time; jy = v;
+        facingRight = jx >= 0;
+        pouncing = false;
+        var keep = goal;                               // Crouch'a geçerken hedef unutulmasın
+        Set(CatState.Crouch, 99, 99);
+        goal = keep;
+        return true;
+    }
 
     void Launch()
     {
@@ -143,9 +193,12 @@ public sealed partial class Cat
         platform = p;
         riding = World.Frames.TryGetValue(p.Owner, out var r) ? r : null;
         vx = vy = 0;
-        bool wasPouncing = pouncing;
-        pouncing = false;
-        if (wasPouncing && Settings.Chase && Rng.NextDouble() < 0.5) Set(CatState.Chase, 2, 4);
+        rideChangedAt = Now;
+        bool wasPouncing = pouncing, wasFlung = flung;
+        pouncing = false; flung = false;
+        if (goal != Goal.None) { var keep = goal; Set(CatState.Seek, 12, 12); goal = keep; }   // hedefe yürümeye devam
+        else if (wasFlung) Set(CatState.Sit, 1.5, 2.5);
+        else if (wasPouncing && Settings.Chase && Rng.NextDouble() < 0.5) Set(CatState.Chase, 2, 4);
         else if (impactSpeed > 1500 * D) Set(CatState.Sit, 1.2, 2.2);
         else Set(CatState.Sit, 0.3, 1.0);
     }

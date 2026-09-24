@@ -19,4 +19,7 @@ public sealed class CatEnvironment
     public double Dpi { get; init; } = 1;
 
     public Random Random { get; init; } = Random.Shared;
+
+    /// <summary>Yerel saat (gece kediler daha çok uyur). Testlerde sabitlenir.</summary>
+    public Func<DateTime> LocalTime { get; init; } = () => DateTime.Now;
 }

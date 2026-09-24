@@ -35,6 +35,21 @@ public sealed class AppSettings
     public string? LastSeenVersion { get; set; }
 
     public List<CatConfig> Cats { get; set; } = new();
+
+    /// <summary>Kediler arası ilişkiler ("idA|idB" → -1…1).</summary>
+    public Dictionary<string, double> Bonds { get; set; } = new();
+
+    /// <summary>Masaüstündeki eşyalar (mama kabı, yumak).</summary>
+    public List<PropState> Props { get; set; } = new();
+}
+
+/// <summary>Kalıcı eşya kaydı. Açılışta eşya kaydedildiği x konumunda yukarıdan düşer.</summary>
+public sealed class PropState
+{
+    public Props.PropKind Kind { get; set; }
+    public double X { get; set; }
+    public double Food { get; set; }
+    public uint Color { get; set; }
 }
 
 public enum UpdateMode

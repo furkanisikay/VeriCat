@@ -113,9 +113,15 @@ public sealed partial class Cat
         UpdateAim();
     }
 
+    /// <summary>Yumruk yumağa mı atılıyor? (Değilse imlece.)</summary>
+    Props.Prop? swatProp;
+
+    /// <summary>Yumruğun hedefi: yumak (merkezi) ya da imleç.</summary>
+    (double X, double Y) SwatTarget => swatProp is { } p ? (p.X, p.Y + p.Radius) : Pointer.Position;
+
     void SwatStep()
     {
-        var (mx, _) = Pointer.Position;
+        var (mx, _) = SwatTarget;
         if (Math.Abs(mx - px) > 6 * S) facingRight = mx > px;
         UpdateAim();
 
@@ -127,6 +133,12 @@ public sealed partial class Cat
         }
 
         if (stateTime < stateLength) return;
+        if (swatProp is { } played)
+        {   // yumağı vurdu: yarısında peşinden koşar
+            if (Rng.NextDouble() < 0.5 * (0.5 + Traits.Playfulness)) Seek(Goal.Play, prop: played);
+            else Set(CatState.Sit, 0.8, 1.6);
+            return;
+        }
         if (fleeAfterSwat) RunFrom(mx, scared: false);
         else if (Settings.Chase && Rng.NextDouble() < 0.6) Set(CatState.Chase, 2, 4);
         else Set(CatState.Sit, 0.8, 1.6);
@@ -143,7 +155,7 @@ public sealed partial class Cat
 
     void UpdateAim()
     {
-        var (mx, my) = Pointer.Position;
+        var (mx, my) = SwatTarget;
         var (sx, sy) = Shoulder;
         aim = Math.Clamp(Math.Atan2(my - sy, Math.Max(Math.Abs(mx - sx), 1)), -0.4, 1.2);
     }
@@ -152,6 +164,12 @@ public sealed partial class Cat
     {
         var (sx, sy) = Shoulder;
         double tipX = sx + Dir * Math.Cos(aim) * 40 * S, tipY = sy + Math.Sin(aim) * 40 * S;
+        if (swatProp is { } toy)
+        {   // yumak: pati ya da gövde yakınındaysa vurur
+            if (Distance(tipX, tipY, toy.X, toy.Y + toy.Radius) < 55 * S + toy.Radius || Math.Abs(toy.X - px) < 60 * S + toy.Radius)
+                BatProp(toy);
+            return;
+        }
         var (mx, my) = Pointer.Position;
         if (Distance(tipX, tipY, mx, my) < 45 * S) Hit(aim);
     }
@@ -161,6 +179,7 @@ public sealed partial class Cat
     {
         impact = ImpactLength;
         Voice.Swat();
+        Vitals.Play(0.04);
         if (!Settings.PunchCursor || Pointer.AnyButtonDown) return;
         double push = R(14, 24) * D;
         Pointer.Nudge(Dir * Math.Cos(angle) * push, Math.Sin(angle) * push + 4 * D);

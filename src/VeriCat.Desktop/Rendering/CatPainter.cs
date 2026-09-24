@@ -47,6 +47,7 @@ internal sealed partial class CatPainter
             case Pose.Dangle: p.Dangle(); break;
             case Pose.Fight: p.Fight(); break;
             case Pose.Swat: p.Swat(); break;
+            case Pose.Eat: p.Eat(); break;
         }
         g.Restore(inner);
         p.Overlays(name);

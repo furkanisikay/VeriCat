@@ -19,6 +19,7 @@ public class MovementTests
         var sim = new Sim(Window());
         var shelf = sim.World.Platforms.Single(p => p.IsInner);
         var cat = sim.AddCat(600, on: shelf);
+        sim.Run(1);   // pencere bir süre dursun: ani ama tek seferlik taşıma savurmaz
 
         sim.SetWindows(Window(dx: 100, dy: -50));
         sim.Run(1 / 60.0);

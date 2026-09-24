@@ -32,7 +32,7 @@ public class PersonalityTests
     public void Hot_tempered_cats_fight_more_easily()
     {
         var hot = new Personality { Temper = 1 };
-        var (sim, a, _) = Meeting(hot, hot, roll: 0.8);   // ortalama kediler için kavga eşiği 0.5
+        var (sim, a, _) = Meeting(hot, hot, roll: 0.7);   // ortalama kediler için kavga eşiği 0.5, huysuzlar için 0.75 (tavan)
 
         Assert.True(sim.RunUntil(() => a.State == CatState.Fight, 3));
     }

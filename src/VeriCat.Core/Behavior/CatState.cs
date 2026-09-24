@@ -24,4 +24,8 @@ public enum CatState
     Stalk,
     /// <summary>Arka ayaklar üstünde imlece yumruk atma.</summary>
     Swat,
+    /// <summary>Bir hedefe gidiyor (mama kabı, yumak, arkadaşının yanı, imleç).</summary>
+    Seek,
+    /// <summary>Mama kabından yiyor.</summary>
+    Eat,
 }

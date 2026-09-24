@@ -54,7 +54,90 @@ internal sealed partial class CatPainter
                 using (var pen = new Pen(Color.FromArgb(a, Color.White), 1.2f)) g.DrawPath(pen, p);
             }
         }
+        if (f.Emote != Emote.None) EmoteBubble(P(Mirror(f.Pose == Pose.Sleep ? 106 : 116), f.Pose == Pose.Sleep ? 78 : 116), f.Emote, f.EmoteAge);
         if (name is NameTag n) NamePlate(n);
+    }
+
+    static readonly Color FishBlue = Hex.ToColor(0x5AA7E8), MoonGold = Hex.ToColor(0xF5CB4B), YarnRed = Hex.ToColor(0xE0413A);
+
+    /// <summary>Düşünce baloncuğu: kafanın üstünde "pop" diye belirir, içinde ihtiyacın simgesi.</summary>
+    void EmoteBubble(PointF at, Emote e, float age)
+    {
+        // Belirme: hafif taşan bir büyüme (0 → 1.12 → 1).
+        float t = Math.Clamp(age / 0.22f, 0, 1), pop = t < 1 ? 1.12f * MathF.Sin(t * MathF.PI / 2 * 1.1f) : 1;
+        if (pop <= 0.01f) return;
+        var st = g.Save();
+        g.TranslateTransform(at.X, at.Y);
+        g.ScaleTransform(pop, pop);
+
+        const float r = 12;
+        // Düşünce kuyruğu: kafaya doğru iki küçük daire.
+        float side = f.FacingRight ? -1 : 1;
+        using (var tail = new SolidBrush(Color.FromArgb(240, 255, 255, 255)))
+        using (var edge = new Pen(c.Line, 1.2f))
+        {
+            foreach (var (dx, dy, s) in new[] { (side * 7f, -14f, 4.5f), (side * 12f, -19f, 3f) })
+            {
+                g.FillEllipse(tail, dx - s / 2, dy - s / 2, s, s);
+                g.DrawEllipse(edge, dx - s / 2, dy - s / 2, s, s);
+            }
+            g.FillEllipse(tail, -r, -r, 2 * r, 2 * r);
+            g.DrawEllipse(edge, -r, -r, 2 * r, 2 * r);
+        }
+
+        switch (e)
+        {
+            case Emote.Hungry:   // balık
+                using (var b = new SolidBrush(FishBlue))
+                {
+                    g.FillEllipse(b, -7, -3.5f, 10, 7);
+                    g.FillPolygon(b, new[] { P(2, 0), P(7, 4), P(7, -4) });
+                }
+                using (var eye = new SolidBrush(Color.White)) g.FillEllipse(eye, -5, 0, 2, 2);
+                break;
+            case Emote.Lonely:   // boş kalp
+                using (var h = Heart(P(0, 2), 5.5f))
+                using (var pen = new Pen(HeartRed, 1.8f)) g.DrawPath(pen, h);
+                break;
+            case Emote.Love:     // dolu kalp
+                using (var h = Heart(P(0, 2), 5.5f))
+                using (var b = new SolidBrush(HeartRed)) g.FillPath(b, h);
+                break;
+            case Emote.Bored:    // yumak
+                using (var b = new SolidBrush(YarnRed)) g.FillEllipse(b, -5.5f, -5.5f, 11, 11);
+                using (var pen = new Pen(Color.FromArgb(160, 90, 20, 20), 1))
+                {
+                    g.DrawArc(pen, -8, -4, 16, 10, 200, 140);
+                    g.DrawArc(pen, -4, -8, 10, 16, 110, 140);
+                }
+                break;
+            case Emote.Sleepy:   // hilal
+                using (var b = new SolidBrush(MoonGold))
+                using (var moon = new GraphicsPath())
+                {
+                    moon.AddEllipse(-6, -6, 12, 12);
+                    using var cut = new Region(moon);
+                    using var bite = new GraphicsPath();
+                    bite.AddEllipse(-2, -1, 12, 12);
+                    cut.Exclude(bite);
+                    g.FillRegion(b, cut);
+                }
+                break;
+            case Emote.Grumpy:   // kızgınlık işareti
+                foreach (var angle in new[] { 0.785f, 2.356f, 3.927f, 5.498f })
+                {
+                    var a = Polar(P(0, 0), angle, 2);
+                    var b2 = Polar(P(0, 0), angle, 6.5f);
+                    var cp = Polar(P(0, 0), angle + 0.5f, 5);
+                    Line(Bezier(a, cp, cp, b2), 1.8f, AngerRed);
+                }
+                break;
+            case Emote.Surprised:   // ünlem
+                using (var pen = RoundPen(c.Line, 2.6f)) g.DrawLine(pen, 0, 6, 0, -1.5f);
+                using (var b = new SolidBrush(c.Line)) g.FillEllipse(b, -1.5f, -6.5f, 3, 3);
+                break;
+        }
+        g.Restore(st);
     }
 
     /// <summary>

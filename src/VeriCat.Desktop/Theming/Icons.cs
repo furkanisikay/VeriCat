@@ -7,6 +7,7 @@ internal enum Glyph
 {
     Paw, Moon, Plus, Palette, Resize, Window, Layers, Target, Fist, Tag, Sound, Power,
     Update, Info, Exit, Heart, Dice, EyeOff, Close, Sparkle,
+    Bowl, Yarn, Bug, Bulb, Broom,
 }
 
 /// <summary>Menüler için çizgi tarzı vektör ikonlar. 16x16'lık kutuda tanımlı, istenen boyda çizilir ve önbelleğe alınır.</summary>
@@ -130,6 +131,43 @@ internal static class Icons
                 break;
             case Glyph.Close:
                 g.DrawLine(p, 4, 4, 12, 12); g.DrawLine(p, 12, 4, 4, 12);
+                break;
+            case Glyph.Bowl:
+                g.DrawLine(p, 2, 8, 14, 8);
+                using (var path = new GraphicsPath())
+                {
+                    path.AddBezier(2.5f, 8, 3, 12.5f, 13, 12.5f, 13.5f, 8);
+                    g.DrawPath(p, path);
+                }
+                foreach (var (x, y) in new[] { (5.5f, 6.2f), (8f, 5.4f), (10.5f, 6.2f) }) g.FillEllipse(b, x - 1.2f, y - 1.2f, 2.4f, 2.4f);
+                break;
+            case Glyph.Yarn:
+                g.DrawEllipse(p, 2.5f, 2.5f, 10, 10);
+                g.DrawArc(p, 0.5f, 4.5f, 12, 9, 290, 120);
+                g.DrawArc(p, 4.5f, 0.5f, 9, 12, 160, 120);
+                g.DrawBezier(p, 12, 10.5f, 13.5f, 12, 14, 13.5f, 15, 14.5f);
+                break;
+            case Glyph.Bug:
+                g.DrawEllipse(p, 4.5f, 5, 7, 9);
+                g.DrawLine(p, 8, 7, 8, 13.5f);
+                g.DrawArc(p, 5.5f, 2, 5, 5, 200, 140);
+                foreach (var y in new[] { 7f, 10f, 12.5f })
+                {
+                    g.DrawLine(p, 4.5f, y, 2, y - 1);
+                    g.DrawLine(p, 11.5f, y, 14, y - 1);
+                }
+                break;
+            case Glyph.Bulb:
+                g.DrawArc(p, 3.5f, 1.5f, 9, 9, 150, 240);
+                g.DrawLine(p, 5.3f, 9.5f, 6, 11.5f);
+                g.DrawLine(p, 10.7f, 9.5f, 10, 11.5f);
+                g.DrawLine(p, 6, 11.5f, 10, 11.5f);
+                g.DrawLine(p, 6.5f, 14, 9.5f, 14);
+                break;
+            case Glyph.Broom:
+                g.DrawLine(p, 12.5f, 2, 7.5f, 9);
+                g.DrawPolygon(p, new PointF[] { new(6, 8), new(9.5f, 10.5f), new(7, 14.5f), new(2, 13) });
+                g.DrawLine(p, 4.5f, 11.5f, 3.5f, 13.3f);
                 break;
             case Glyph.Sparkle:
                 using (var path = new GraphicsPath())

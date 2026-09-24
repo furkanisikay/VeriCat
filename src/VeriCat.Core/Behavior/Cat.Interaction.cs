@@ -47,6 +47,7 @@ public sealed partial class Cat
         if (!dragging)
         {   // sadece tıklandı
             Voice.Meow(Config.Pitch);
+            Vitals.Cuddle(0.02);
             if (state is not (CatState.Air or CatState.Crouch)) Set(CatState.Happy, 1.6, 2.4);
             return;
         }
@@ -78,7 +79,7 @@ public sealed partial class Cat
                 sleepPetting += amount;
                 if (sleepPetting > 150 * D) { sleepPetting = 0; Set(CatState.Sit, 1.5, 3); }
                 return;
-            case CatState.Sit or CatState.Happy or CatState.Walk or CatState.Petted:
+            case CatState.Sit or CatState.Happy or CatState.Walk or CatState.Petted or CatState.Seek:
                 break;
             default:
                 return;
@@ -96,7 +97,7 @@ public sealed partial class Cat
 
     void PettedStep(double dt)
     {
-        if (petting > 0) { petIdle = 0; Voice.Purr(); }
+        if (petting > 0) { petIdle = 0; Voice.Purr(); Vitals.Cuddle(dt * 0.06); }   // ~15 sn okşama sevgiyi doldurur
         else petIdle += dt;
 
         if (petIdle > 0.8) { Set(CatState.Happy, 1.2, 2); return; }
