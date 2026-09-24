@@ -54,14 +54,19 @@ internal sealed class MenuHeader : ToolStripItem
     readonly Image avatar;
     readonly string title, subtitle;
     readonly Color ring;
+    readonly IReadOnlyList<(string Label, double Value)>? bars;
 
-    public MenuHeader(Image avatar, string title, string subtitle, Color ring)
+    /// <param name="bars">İsteğe bağlı gösterge çubukları (ör. ihtiyaçlar), 0…1.</param>
+    public MenuHeader(Image avatar, string title, string subtitle, Color ring, IReadOnlyList<(string Label, double Value)>? bars = null)
     {
         this.avatar = avatar;
         this.title = title;
         this.subtitle = subtitle;
         this.ring = ring;
+        this.bars = bars;
     }
+
+    const int BarColumn = 58, BarsHeight = 30;
 
     public override bool CanSelect => false;
 
@@ -78,7 +83,9 @@ internal sealed class MenuHeader : ToolStripItem
     {
         float k = K;
         int text = Math.Max(TextRenderer.MeasureText(title, Theme.UiBold).Width, TextRenderer.MeasureText(subtitle, Theme.UiSmall).Width);
-        return new Size((int)(64 * k) + text, (int)(50 * k));
+        int width = (int)(64 * k) + text;
+        if (bars != null) width = Math.Max(width, (int)((24 + BarColumn * bars.Count) * k));
+        return new Size(width, (int)((50 + (bars != null ? BarsHeight : 0)) * k));
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -87,13 +94,40 @@ internal sealed class MenuHeader : ToolStripItem
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        float k = K, d = 36 * k, x = 12 * k, y = (Height - d) / 2;
+        float k = K, top = 50 * k, d = 36 * k, x = 12 * k, y = (top - d) / 2;
+        if (bars != null) DrawBars(g, p, k, top);
+        PaintIdentity(g, p, k, d, x, y, top);
+    }
+
+    /// <summary>İhtiyaç çubukları: yeşil (iyi), sarı (azalıyor), kırmızı (acil).</summary>
+    void DrawBars(Graphics g, Palette p, float k, float top)
+    {
+        float col = BarColumn * k, x0 = 12 * k, barH = 5 * k, barW = col - 12 * k;
+        for (int i = 0; i < bars!.Count; i++)
+        {
+            var (label, value) = bars[i];
+            float x = x0 + i * col;
+            TextRenderer.DrawText(g, label, Theme.UiSmall, new Point((int)x, (int)(top + 1 * k)), p.Subtle, TextFormatFlags.NoPadding);
+            var track = new RectangleF(x, top + 18 * k, barW, barH);
+            using (var tp = MenuRenderer.RoundRect(track, barH / 2))
+            using (var tb = new SolidBrush(p.Track)) g.FillPath(tb, tp);
+            float v = (float)Math.Clamp(value, 0, 1);
+            if (v <= 0) continue;
+            var color = v >= 0.6f ? Color.FromArgb(76, 175, 80) : v >= 0.3f ? Color.FromArgb(242, 170, 60) : p.Danger;
+            using var fp = MenuRenderer.RoundRect(new RectangleF(track.X, track.Y, Math.Max(barH, barW * v), barH), barH / 2);
+            using var fb = new SolidBrush(color);
+            g.FillPath(fb, fp);
+        }
+    }
+
+    void PaintIdentity(Graphics g, Palette p, float k, float d, float x, float y, float height)
+    {
         using (var bg = new SolidBrush(p.AccentSoft)) g.FillEllipse(bg, x, y, d, d);
         using (var pen = new Pen(ring, 2 * k)) g.DrawEllipse(pen, x, y, d, d);
         g.DrawImage(avatar, x + 3 * k, y + 3 * k, d - 6 * k, d - 6 * k);
         float tx = x + d + 10 * k;
-        TextRenderer.DrawText(g, title, Theme.UiBold, new Point((int)tx, (int)(Height / 2 - 18 * k)), p.Text, TextFormatFlags.NoPadding);
-        TextRenderer.DrawText(g, subtitle, Theme.UiSmall, new Point((int)tx, (int)(Height / 2 + 1 * k)), p.Subtle, TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, title, Theme.UiBold, new Point((int)tx, (int)(height / 2 - 18 * k)), p.Text, TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, subtitle, Theme.UiSmall, new Point((int)tx, (int)(height / 2 + 1 * k)), p.Subtle, TextFormatFlags.NoPadding);
     }
 }
 

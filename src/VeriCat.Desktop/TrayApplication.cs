@@ -3,10 +3,13 @@ using System.Drawing.Imaging;
 using VeriCat.Core.Appearance;
 using VeriCat.Core.Behavior;
 using VeriCat.Core.Configuration;
+using VeriCat.Core.Diagnostics;
+using VeriCat.Core.Props;
 using VeriCat.Core.Updates;
 using VeriCat.Core.World;
 using VeriCat.Desktop.Audio;
 using VeriCat.Desktop.Customization;
+using VeriCat.Desktop.Diagnostics;
 using VeriCat.Desktop.Native;
 using VeriCat.Desktop.Platform;
 using VeriCat.Desktop.Rendering;
@@ -19,7 +22,8 @@ namespace VeriCat.Desktop;
 /// <summary>Görev çubuğu tepsisindeki uygulama: kedileri, dünya taramasını, güncellemeleri ve ana döngüyü yönetir.</summary>
 internal sealed class TrayApplication : ApplicationContext, ICatHost
 {
-    const double ScanInterval = 1.0 / 15, FullscreenInterval = 0.5;
+    const double ScanInterval = 1.0 / 15, FullscreenInterval = 0.5, SaveInterval = 60;
+    const int MaxYarns = 3, MaxBowls = 2;
 
     readonly SettingsStore store = SettingsStore.ForCurrentUser();
     readonly AppSettings settings;
@@ -42,7 +46,8 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
     UpdateDialog? updateDialog;
     Cat? customizing;
     Action? balloonAction;
-    double last, scanClock, fullscreenClock;
+    readonly Dictionary<Prop, PropWindow> propWindows = new();
+    double last, scanClock, fullscreenClock, saveClock;
     bool hidden;
 
     public TrayApplication()
@@ -55,7 +60,7 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         {
             World = world, Voice = voice, Pointer = new CursorPointer(), Settings = settings, Clock = Now, Dpi = dpi,
         };
-        colony = new Colony(env);
+        colony = new Colony(env, new BondBook(settings.Bonds));
         updates = new UpdateService(settings, Save);
         updates.AvailableChanged += (_, _) => OnUpdateAvailable();
 
@@ -75,7 +80,9 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         tray.BalloonTipClicked += (_, _) => { var a = balloonAction; balloonAction = null; a?.Invoke(); };
 
         var saved = settings.Cats.ToList();
+        foreach (var c in saved) c.Vitals.CatchUp(DateTimeOffset.Now);   // kapalıyken geçen süre (nazikçe)
         if (saved.Count == 0) AddCat(); else saved.ForEach(Spawn);
+        foreach (var p in settings.Props.ToList()) SpawnProp(p.Kind, p.X, null, p.Food, p.Color);
 
         Application.ApplicationExit += (_, _) => { tray.Visible = false; Save(); };
         last = Now();
@@ -101,6 +108,9 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         }
         if (hidden) return;   // tam ekran: ne tarama ne çizim, işlemci boşta
 
+        saveClock += dt;
+        if (saveClock > SaveInterval) { saveClock = 0; Save(); }   // ihtiyaçlar ve eşyalar çökmede kaybolmasın
+
         scanClock += dt;
         if (scanClock > ScanInterval) { scanClock = 0; RefreshWorld(); }
         colony.Step(dt);
@@ -117,7 +127,7 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
     {
         if (value == hidden) return;
         hidden = value;
-        foreach (var w in windows.Values)
+        foreach (var w in windows.Values.Cast<Form>().Concat(propWindows.Values))
         {
             if (hidden) w.Hide();
             else w.Show();
@@ -159,7 +169,10 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
 
     void Save()
     {
+        var now = DateTimeOffset.Now;
+        foreach (var c in colony.Cats) c.Vitals.SavedAt = now;
         settings.Cats = colony.Cats.Select(c => c.Config).ToList();
+        settings.Props = colony.Props.Select(p => new PropState { Kind = p.Kind, X = p.X, Food = p.Food, Color = p.Color }).ToList();
         store.Save(settings);
     }
 
@@ -186,6 +199,7 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
     public void CloseCat(Cat cat)
     {
         colony.Remove(cat);
+        colony.Bonds.Forget(cat.Config.Id);
         windows.Remove(cat);
         cat.Dismiss();
         if (customizing == cat) customizer?.Close();
@@ -211,11 +225,17 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         var m = MenuStyle.Apply(new ContextMenuStrip());
         int icon = MenuStyle.IconSize(m);
         var coat = Coat.From(cat.Config);
-        m.Items.Add(new MenuHeader(Avatar(coat, (int)(30 * dpi)), cat.Config.Name, Describe(cat), coat.Collar));
+        var v = cat.Vitals;
+        m.Items.Add(new MenuHeader(Avatar(coat, (int)(30 * dpi)), cat.Config.Name, Describe(cat), coat.Collar, new[]
+        {
+            ("Tokluk", v.Hunger), ("Sevgi", v.Love), ("Oyun", v.Fun), ("Enerji", v.Energy),
+        }));
         m.Items.Add(new ToolStripSeparator());
         m.Items.Add(MenuStyle.Item("Miyavla", Glyph.Paw, icon, cat.Meow));
         m.Items.Add(MenuStyle.Item(cat.IsAsleep ? "Uyandır" : "Uyut", Glyph.Moon, icon, () => { if (cat.IsAsleep) cat.Wake(); else cat.Sleep(); }));
         m.Items.Add(MenuStyle.Item("Yanıma gel", Glyph.Target, icon, cat.Summon));
+        m.Items.Add(MenuStyle.Item("Mama koy", Glyph.Bowl, icon, () => PlaceOrFillBowl(cat.X)));
+        m.Items.Add(MenuStyle.Item("Yumak at", Glyph.Yarn, icon, () => ThrowYarn(cat.X, cat.Y + 150 * dpi)));
         m.Items.Add(new ToolStripSeparator());
         m.Items.Add(MenuStyle.Item("Özelleştir…", Glyph.Palette, icon, () => Customize(cat)));
         m.Items.Add(MenuStyle.Item("Kopyasını oluştur", Glyph.Plus, icon, () => Duplicate(cat)));
@@ -227,7 +247,7 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         ShowMenu(m);
     }
 
-    static string Describe(Cat cat)
+    string Describe(Cat cat)
     {
         string state = cat.State switch
         {
@@ -243,14 +263,21 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
             CatState.Fight => "Kavga ediyor!",
             CatState.Stalk => "Pusuda",
             CatState.Swat => "Yumruk atıyor",
+            CatState.Seek => "Bir yere gidiyor",
+            CatState.Eat => "Mama yiyor",
             _ => "",
         };
+        var parts = new List<string> { state };
         var t = cat.Config.Personality;
         var (value, word) = new[]
         {
             (t.Playfulness, "oyuncu"), (t.Temper, "kavgacı"), (t.Affection, "sevecen"), (t.Energy, "enerjik"), (1 - t.Energy, "uykucu"),
         }.MaxBy(x => x.Item1);
-        return value > 0.65 ? $"{state} · {word}" : state;
+        if (value > 0.65) parts.Add(word);
+        var (friend, rival) = colony.Bonds.Closest(cat, colony.Cats);
+        if (friend != null) parts.Add("♥ " + friend.Config.Name);
+        if (rival != null) parts.Add("⚡ " + rival.Config.Name);
+        return string.Join(" · ", parts);
     }
 
     static Bitmap Avatar(Coat coat, int size)
@@ -298,6 +325,14 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         m.Items.Add(customize);
 
         m.Items.Add(MenuStyle.Item("Kedileri çağır", Glyph.Target, icon, () => { foreach (var c in colony.Cats) c.Summon(); }));
+
+        m.Items.Add(new ToolStripSeparator());
+        m.Items.Add(MenuStyle.Caption("EŞYALAR"));
+        var bowlText = colony.Props.Any(p => p.Kind == PropKind.Bowl) ? "Mama kabını doldur" : "Mama kabı koy";
+        m.Items.Add(MenuStyle.Item(bowlText, Glyph.Bowl, icon, () => PlaceOrFillBowl(Cursor.Position.X)));
+        m.Items.Add(MenuStyle.Item("Yumak at", Glyph.Yarn, icon, () => ThrowYarn(Cursor.Position.X, -Cursor.Position.Y)));
+        if (colony.Props.Count > 0)
+            m.Items.Add(MenuStyle.Item("Eşyaları topla", Glyph.Broom, icon, ClearProps));
         m.Items.Add(MenuStyle.Item("Hepsi miyavlasın", Glyph.Paw, icon, MeowAll));
         m.Items.Add(MenuStyle.Item(colony.Cats.Any(c => c.IsAsleep) ? "Hepsini uyandır" : "Hepsini uyut", Glyph.Moon, icon, () =>
         {
@@ -358,6 +393,12 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         m.Items.Add(upd);
 
         m.Items.Add(MenuStyle.Item($"Yenilikler ({AppInfo.DisplayVersion})", Glyph.Info, icon, () => _ = ShowWhatsNewAsync(AppInfo.Version)));
+        var bug = MenuStyle.Item("Sorun bildir", Glyph.Bug, icon, () => IssueReporter.Open(IssueKind.Bug, settings, colony.Cats.Count));
+        bug.ToolTipText = "GitHub'da sürüm ve sistem bilgisiyle doldurulmuş bir sorun kaydı açar. Göndermeden önce okuyabilirsin.";
+        m.Items.Add(bug);
+        var idea = MenuStyle.Item("Öneri gönder", Glyph.Bulb, icon, () => IssueReporter.Open(IssueKind.Idea, settings, colony.Cats.Count));
+        idea.ToolTipText = "Kedilerin yapmasını istediğin bir şey mi var? GitHub'da öneri olarak paylaş.";
+        m.Items.Add(idea);
         m.Items.Add(MenuStyle.Item("Çıkış", Glyph.Exit, icon, Application.Exit));
 
         MenuStyle.StyleSubmenus(m.Items);
@@ -381,6 +422,86 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
             var c = colony.Cats[i];
             Task.Delay(i * 350).ContinueWith(_ => c.Meow(), ui);
         }
+    }
+
+    // MARK: Eşyalar
+
+    Prop SpawnProp(PropKind kind, double x, double? y, double food = 0, uint color = 0)
+    {
+        var (screen, _) = world.ScreenNear(x, y ?? 0);
+        var window = new PropWindow(this, dpi);
+        var prop = new Prop(kind, env, window, x, y ?? screen.WorkTop - 60 * dpi)
+        {
+            Food = food,
+            Color = color != 0 ? color : CoatSpec.CollarPresets[Random.Shared.Next(CoatSpec.CollarPresets.Count)],
+        };
+        window.Attach(prop);
+        colony.AddProp(prop);
+        propWindows[prop] = window;
+        prop.Step(0);
+        if (!hidden) window.Show();
+        return prop;
+    }
+
+    /// <summary>Kap varsa doldurur (aç kediler koşar), yoksa verilen x'in altındaki zemine yeni bir kap koyar.</summary>
+    void PlaceOrFillBowl(double x)
+    {
+        var bowls = colony.Props.Where(p => p.Kind == PropKind.Bowl).ToList();
+        if (bowls.Count > 0) { foreach (var b in bowls) FillBowl(b); return; }
+        var (screen, _) = world.ScreenNear(x, -Cursor.Position.Y);
+        SpawnProp(PropKind.Bowl, Math.Clamp(x, screen.Bounds.MinX + 60 * dpi, screen.Bounds.MaxX - 60 * dpi), null, food: 1);
+        Save();
+    }
+
+    public void FillBowl(Prop bowl)
+    {
+        bowl.Food = 1;
+        colony.Cats.FirstOrDefault(c => c.Vitals.Hunger < 0.6)?.Meow();   // aç biri varsa sevinçle miyavlar
+        Save();
+    }
+
+    /// <summary>İmlecin olduğu yerden rastgele yöne bir yumak fırlatır (çok yumak varsa en eskisini yeniden atar).</summary>
+    void ThrowYarn(double x, double y)
+    {
+        var yarns = colony.Props.Where(p => p.Kind == PropKind.Yarn).ToList();
+        Prop yarn;
+        if (yarns.Count >= MaxYarns) { yarn = yarns[0]; yarn.MoveTo(x, y); }   // sınır doldu: en eskisini yeniden at
+        else yarn = SpawnProp(PropKind.Yarn, x, y);
+        double dir = Random.Shared.Next(2) == 0 ? -1 : 1;
+        yarn.Kick(dir * (300 + Random.Shared.NextDouble() * 500) * dpi, (250 + Random.Shared.NextDouble() * 400) * dpi);
+        Save();
+    }
+
+    void RemoveProp(Prop prop)
+    {
+        colony.RemoveProp(prop);
+        propWindows.Remove(prop);
+        prop.Dismiss();
+        Save();
+    }
+
+    void ClearProps()
+    {
+        foreach (var p in colony.Props.ToList()) RemoveProp(p);
+    }
+
+    public void ShowPropMenu(Prop prop)
+    {
+        var m = MenuStyle.Apply(new ContextMenuStrip());
+        int icon = MenuStyle.IconSize(m);
+        if (prop.Kind == PropKind.Bowl)
+        {
+            m.Items.Add(MenuStyle.Caption(prop.Food > 0.01 ? $"MAMA KABI · %{prop.Food * 100:0} DOLU" : "MAMA KABI · BOŞ"));
+            m.Items.Add(MenuStyle.Item("Mamayı doldur", Glyph.Bowl, icon, () => FillBowl(prop)));
+        }
+        else
+        {
+            m.Items.Add(MenuStyle.Caption("YUMAK"));
+            m.Items.Add(MenuStyle.Item("Fırlat", Glyph.Yarn, icon, () => ThrowYarn(prop.X, prop.Y + 40 * dpi)));
+        }
+        m.Items.Add(new ToolStripSeparator());
+        m.Items.Add(MenuStyle.Item("Kaldır", Glyph.Close, icon, () => RemoveProp(prop), MenuTag.Danger));
+        ShowMenu(m);
     }
 
     // MARK: Güncellemeler

@@ -1,8 +1,11 @@
 namespace VeriCat.Core.Rendering;
 
-public enum Pose { Walk, Air, Sit, Sleep, Dangle, Fight, Swat, Pounce }
+public enum Pose { Walk, Air, Sit, Sleep, Dangle, Fight, Swat, Pounce, Eat }
 
 public enum EyeKind { Open, Closed, Happy, Wide, Angry }
+
+/// <summary>Kafanın üstünde beliren düşünce baloncuğu.</summary>
+public enum Emote { None, Hungry, Lonely, Bored, Sleepy, Love, Grumpy, Surprised }
 
 /// <summary>Bir karede kedinin nasıl görüneceği. Çizimden bağımsız, saf veri.</summary>
 public sealed class Sprite
@@ -25,4 +28,6 @@ public sealed class Sprite
     public float Aim;             // Swat: vuruş açısı, yukarı pozitif (radyan)
     public float? Impact;         // Swat/Pounce: isabet efekti zamanı
     public float? Dust;           // Fight: toz bulutu zamanı
+    public Emote Emote;           // düşünce baloncuğu
+    public float EmoteAge;        // baloncuğun belirme animasyonu için (saniye)
 }

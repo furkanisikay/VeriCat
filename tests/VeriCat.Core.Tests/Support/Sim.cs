@@ -12,6 +12,9 @@ internal sealed class Sim
     public static readonly ScreenSnapshot Screen = new(new RectU(0, -1080, 1920, 0), 0, FloorY);
 
     public double Time;
+
+    /// <summary>Yerel saat; varsayılan öğlen (gece davranışı testleri etkilemesin).</summary>
+    public DateTime LocalNow = new(2026, 9, 24, 12, 0, 0);
     public FakeVoice Voice { get; } = new();
     public FakePointer Pointer { get; } = new() { Position = (-5000, 5000) };
     public WorldModel World { get; } = new();
@@ -26,6 +29,7 @@ internal sealed class Sim
         Env = new CatEnvironment
         {
             World = World, Voice = Voice, Pointer = Pointer, Settings = Settings, Clock = () => Time, Random = Random,
+            LocalTime = () => LocalNow,
         };
         Colony = new Colony(Env);
     }

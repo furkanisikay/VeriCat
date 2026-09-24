@@ -108,6 +108,19 @@ internal sealed partial class CatPainter
         if (f.Dust is float t) FightDust(t);
     }
 
+    /// <summary>Mama kabından yeme: ön taraf eğik, kafa aşağıda ve çiğnerken hafifçe inip kalkıyor, kuyruk mutlu yukarıda.</summary>
+    void Eat()
+    {
+        float chew = MathF.Sin(f.Phase * MathF.PI * 2) * 1.6f, foot = Ground + 5, sway = MathF.Sin(f.Clock * 1.6f) * 4;
+        Stroke(Bezier(P(40, 36), P(20, 42), P(14 + sway * 0.5f, 62), P(22 + sway, 76)), 11, c.Fur, true);
+        Leg(P(50, 26), P(50, foot), 11, c.Shade);
+        Leg(P(84, 20), P(88, foot), 11, c.Shade);
+        Leg(P(42, 26), P(42, foot), 11.5f, c.Fur);
+        Leg(P(76, 20), P(80, foot), 11.5f, c.Fur);
+        Rotated(P(62, 30), -0.14f, () => Torso(P(62, 30)));
+        Rotated(P(104, 32), -0.35f, () => Head(P(104, 30 + chew), 5));
+    }
+
     /// <summary>Arka ayaklar üstünde dikilip imlece yumruk: bir pati uzanır, diğeri geride bekler.</summary>
     void Swat()
     {

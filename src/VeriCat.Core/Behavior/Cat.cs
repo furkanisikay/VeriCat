@@ -85,11 +85,13 @@ public sealed partial class Cat
             case CatState.Dragged: break;
             case CatState.Air: Fly(dt); break;
             default:
-                if (!OnSupport()) { Drop(0); break; }
+                if (!OnSupport()) { if (state != CatState.Air) Drop(0); break; }   // Air: pencereden savruldu
                 switch (state)
                 {
-                    case CatState.Walk: Stride(dt, Pace * S, true); NoticePointer(dt); break;
-                    case CatState.Sit: NoticePointer(dt); break;
+                    case CatState.Walk: Stride(dt, Pace * S, true); NoticePointer(dt); NoticeToys(dt); break;
+                    case CatState.Sit: NoticePointer(dt); NoticeToys(dt); break;
+                    case CatState.Seek: SeekStep(dt); break;
+                    case CatState.Eat: EatStep(dt); break;
                     case CatState.Chase: ChaseStep(dt); break;
                     case CatState.Stalk: StalkStep(); break;
                     case CatState.Swat: SwatStep(); break;
@@ -98,7 +100,8 @@ public sealed partial class Cat
                     case CatState.Fight: FightStep(); break;
                     case CatState.Crouch when stateTime >= 0.22: Launch(); break;
                 }
-                if (state is not (CatState.Crouch or CatState.Air or CatState.Fight or CatState.Swat or CatState.Petted or CatState.Stalk)
+                if (state is not (CatState.Crouch or CatState.Air or CatState.Fight or CatState.Swat or CatState.Petted or CatState.Stalk
+                        or CatState.Eat)
                     && stateTime >= stateLength)
                     Decide();
                 break;
@@ -110,6 +113,9 @@ public sealed partial class Cat
     {
         petting = Math.Max(0, petting - 160 * D * dt);
         impact = Math.Max(0, impact - dt);
+        emoteTime += dt;
+        Vitals.Decay(dt, sleeping: state == CatState.Sleep);
+        if (state is CatState.Chase or CatState.Stalk) Vitals.Play(dt * 0.004);
         TrackPointer(dt);
     }
 
@@ -117,22 +123,37 @@ public sealed partial class Cat
     {
         if (state == CatState.Fight && s != CatState.Fight) opponent = null;
         if (s != CatState.Chase) summoned = false;
+        if (s != CatState.Seek) goal = Goal.None;
+        if (s != CatState.Swat) swatProp = null;
         state = s; stateTime = 0; stateLength = R(min, max);
     }
 
     internal Personality Traits => Config.Personality;
 
-    /// <summary>Sıradaki işi karakterine göre ağırlıklı seçer.</summary>
+    /// <summary>İhtiyaçlar (açlık, sevgi, oyun, enerji).</summary>
+    public Vitals Vitals => Config.Vitals;
+
+    /// <summary>Gece (23:00–07:00) mi? Kediler gece daha çok uyur.</summary>
+    bool IsNight => env.LocalTime().Hour is >= 23 or < 7;
+
+    /// <summary>
+    /// Sıradaki işi seçer. Önce acil bir ihtiyaç var mı bakar (acıkmışsa mamaya, yalnızsa sana, sıkılmışsa yumağa
+    /// gider); yoksa karakterine, enerjisine ve saate göre ağırlıklı rastgele bir iş seçer.
+    /// </summary>
     void Decide()
     {
+        if (TryPursueNeed()) return;
+
         double energy = Traits.Energy;
-        double walk = 30 + 10 * energy, sit = 20, sleep = 12 * (1.2 - energy), jump = 16 + 12 * energy;
-        double chase = Settings.Chase ? 24 * Traits.Playfulness : 0;
+        double tired = 1 + 2 * (1 - Vitals.Energy), bored = 1 + 1.5 * (1 - Vitals.Fun), night = IsNight ? 4 : 1;
+        double walk = (30 + 10 * energy) / Math.Sqrt(night), sit = 20;
+        double sleep = 12 * (1.2 - energy) * tired * night, jump = (16 + 12 * energy) / Math.Sqrt(night);
+        double chase = Settings.Chase ? 24 * Traits.Playfulness * bored : 0;
         double r = Rng.NextDouble() * (walk + sit + sleep + jump + chase);
 
         if ((r -= walk) < 0) { facingRight = Rng.Next(2) == 0; Set(CatState.Walk, 2, 6); }
         else if ((r -= sit) < 0) Set(CatState.Sit, 2, 5);
-        else if ((r -= sleep) < 0) Set(CatState.Sleep, 10, 25);
+        else if ((r -= sleep) < 0) GoToSleep();
         else if ((r -= jump) < 0) { if (!(Settings.Windows && TryJump())) Set(CatState.Walk, 2, 4); }
         else Set(CatState.Chase, 3, 6);
         if (Rng.Next(14) == 0) Voice.Meow(Config.Pitch);
@@ -171,8 +192,11 @@ public sealed partial class Cat
         f.EyeOpen = eye;
         switch (state)
         {
-            case CatState.Walk or CatState.Chase:
+            case CatState.Walk or CatState.Chase or CatState.Seek:
                 f.Pose = Pose.Walk; f.Phase = (float)phase;
+                break;
+            case CatState.Eat:
+                f.Pose = Pose.Eat; f.Phase = (float)(stateTime * 2.2 % 1); f.Eyes = EyeKind.Happy;
                 break;
             case CatState.Flee:
                 f.Pose = Pose.Walk; f.Phase = (float)phase; f.Eyes = EyeKind.Wide; f.EarsBack = true;
@@ -208,6 +232,8 @@ public sealed partial class Cat
                 break;
         }
         if (impact > 0) f.Impact = (float)(ImpactLength - impact);
+        if (flung && state == CatState.Air) { f.Eyes = EyeKind.Wide; f.EarsBack = true; }
+        if (CurrentEmote is Emote e) { f.Emote = e; f.EmoteAge = (float)emoteTime; }
         return f;
     }
 
@@ -223,6 +249,7 @@ public sealed partial class Cat
         px = x; py = p.Y; vx = vy = 0;
         platform = p;
         riding = World.Frames.TryGetValue(p.Owner, out var r) ? r : null;
+        rideChangedAt = Now;
         Set(CatState.Sit, 1, 1);
     }
 

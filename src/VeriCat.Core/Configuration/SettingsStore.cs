@@ -60,8 +60,17 @@ public sealed class SettingsStore
     {
         s.Cats ??= new();
         s.Cats.RemoveAll(c => c == null);
+        s.Bonds ??= new();
+        s.Props ??= new();
+        s.Props.RemoveAll(p => p == null || !Enum.IsDefined(p.Kind) || !double.IsFinite(p.X));
+        foreach (var p in s.Props) p.Food = Math.Clamp(p.Food, 0, 1);
+        // Aynı kimlik iki kedide olmasın (elle kopyalanmış ayar dosyası vb.).
+        var seen = new HashSet<Guid>();
+        foreach (var c in s.Cats)
+            if (c.Id == Guid.Empty || !seen.Add(c.Id)) { c.Id = Guid.NewGuid(); seen.Add(c.Id); }
         foreach (var c in s.Cats)
         {
+            c.Vitals = (c.Vitals ?? new Behavior.Vitals()).Clamped();
             c.Name = CatConfig.SanitizeName(c.Name) ?? "Kedi";
             c.Spec ??= Appearance.CoatSpec.Presets[0].Spec;
             c.Scale = Math.Clamp(c.Scale, 0.3, 3);

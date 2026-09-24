@@ -7,6 +7,9 @@ public sealed class CatConfig
 {
     public const int MaxNameLength = 16;
 
+    /// <summary>Kalıcı kimlik (ilişki hafızası bununla tutulur).</summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+
     public string Name { get; set; } = "Kedi";
     public CoatSpec Spec { get; set; } = CoatSpec.Presets[0].Spec;
     public Markings Markings { get; set; }
@@ -16,6 +19,9 @@ public sealed class CatConfig
     public double Scale { get; set; } = 1;
     public double Speed { get; set; } = 1;
     public double Pitch { get; set; } = 640;
+
+    /// <summary>İhtiyaçlar (açlık, sevgi, oyun, enerji). Ayar değil durumdur ama kedi kapanıp açılınca hatırlasın diye saklanır.</summary>
+    public Behavior.Vitals Vitals { get; set; } = new();
 
     /// <summary>i. hazır kedi; renkler ve tasma sırayla döner, karakteri biraz rastgele.</summary>
     public static CatConfig Preset(int i, double scale, Random random)
@@ -63,6 +69,7 @@ public sealed class CatConfig
         return v.Length > MaxNameLength ? v[..MaxNameLength] : v;
     }
 
+    /// <summary>Görünüm ve karakter kopyası; yeni kimlik ve taze ihtiyaçlarla (kopya yeni bir kedidir).</summary>
     public CatConfig Clone() => new()
     {
         Name = Name, Spec = Spec, Markings = Markings, Collar = Collar, Accessory = Accessory,
