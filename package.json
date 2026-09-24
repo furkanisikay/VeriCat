@@ -2,7 +2,7 @@
   "name": "vericat-release",
   "private": true,
   "description": "Yalnızca sürüm otomasyonu (semantic-release) için. Uygulamanın kendisi .NET'tir.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": ">=22.14"
   },
