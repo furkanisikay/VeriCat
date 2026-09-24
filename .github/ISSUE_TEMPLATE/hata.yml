@@ -1,0 +1,28 @@
+name: Hata bildir
+description: Bir şey beklendiği gibi çalışmıyor. (En kolayı: uygulamada tepsi menüsü → "Sorun bildir".)
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Ne oldu?
+      description: Ne yapıyordun, ne oldu? Mümkünse ekran görüntüsü ekle.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ne olmasını bekliyordun?
+  - type: input
+    id: version
+    attributes:
+      label: Sürüm
+      description: Tepsi menüsünün en üstünde yazar (ör. v1.0.0).
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows sürümü
+      placeholder: Windows 11 23H2
