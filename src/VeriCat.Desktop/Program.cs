@@ -8,10 +8,19 @@ internal static class Program
     [STAThread]
     static void Main(string[] args)
     {
-        using var single = new Mutex(true, "VeriCat.SingleInstance", out bool first);
-        if (!first && !(args.Contains(AppInfo.AfterUpdateArg) && WaitForPrevious(single))) return;
-
         Log.Configure(Log.DefaultPath);
+        using var single = new Mutex(true, "VeriCat.SingleInstance", out bool first);
+        if (!first)
+        {
+            bool afterUpdate = args.Contains(AppInfo.AfterUpdateArg);
+            if (!afterUpdate) return;   // zaten açık
+            if (!WaitForPrevious(single))
+            {
+                Log.Warn("Güncelleme sonrası: önceki sürüm 15 sn içinde kapanmadı, yeni sürüm başlatılamadı");
+                return;
+            }
+        }
+
         Log.Info($"VeriCat {AppInfo.DisplayVersion} başladı");
         InstallCrashHandlers();
 

@@ -34,8 +34,8 @@ internal sealed class UpdateService : IDisposable
     /// <summary>Sunulmayı bekleyen yeni sürüm.</summary>
     public ReleaseInfo? Available { get; private set; }
 
-    /// <summary>İndirme/kurulum sürüyor.</summary>
-    public bool Installing { get; private set; }
+    /// <summary>İndirme sürüyor (bu sırada güncelleme penceresi kapatılamaz). Dosya değişimi başladıktan sonra false.</summary>
+    public bool Downloading { get; private set; }
 
     public event EventHandler? AvailableChanged;
 
@@ -50,7 +50,7 @@ internal sealed class UpdateService : IDisposable
 
     async Task CheckQuietlyAsync()
     {
-        if (settings.Updates == UpdateMode.Off || checking || Installing) return;
+        if (settings.Updates == UpdateMode.Off || checking || Downloading) return;
         try
         {
             var release = await CheckAsync(manual: false);
@@ -88,19 +88,36 @@ internal sealed class UpdateService : IDisposable
     {
         if (!UpdateInstaller.CanInstall())
             throw new UnauthorizedAccessException("VeriCat'in bulunduğu klasöre yazılamıyor. Exe'yi yazılabilir bir klasöre taşıyın ya da sürümü GitHub'dan elle indirin.");
-        Installing = true;
+        var path = Path.Combine(UpdateInstaller.DownloadFolder, $"VeriCat-{release.Version}.exe");
+        Downloading = true;
         try
         {
-            var path = Path.Combine(UpdateInstaller.DownloadFolder, $"VeriCat-{release.Version}.exe");
             Log.Info($"v{release.Version} indiriliyor");
             await client.DownloadAsync(release, path, progress, ct);
-            settings.SkippedVersion = null;
-            save();
-            Log.Info($"v{release.Version} doğrulandı, kuruluyor ve yeniden başlatılıyor");
-            UpdateInstaller.InstallAndRestart(path);
-            Application.Exit();
         }
-        finally { Installing = false; }
+        finally { Downloading = false; }   // Bundan sonra hiçbir pencere kapanmayı engellememeli.
+
+        settings.SkippedVersion = null;
+        save();
+        Log.Info($"v{release.Version} doğrulandı, kuruluyor ve yeniden başlatılıyor");
+        UpdateInstaller.InstallAndRestart(path);
+        ExitForRestart();
+    }
+
+    /// <summary>
+    /// Yeni sürüm başlatıldı; bu süreç kilidi bırakmak için hemen kapanmalı. Yeni süreç en fazla 15 sn bekler.
+    /// Application.Exit herhangi bir pencere FormClosing'i iptal ederse sessizce vazgeçer (v1.0.0/v1.1.0'daki
+    /// "yeniden başlatılıyor…"da takılma hatası buydu), bu yüzden kısa süre sonra süreç zorla sonlandırılır.
+    /// Ayarlar yukarıda zaten kaydedildi.
+    /// </summary>
+    static void ExitForRestart()
+    {
+        Application.Exit();
+        _ = Task.Delay(TimeSpan.FromSeconds(3)).ContinueWith(_ =>
+        {
+            Log.Warn("Uygulama normal kapanmadı; güncelleme için süreç zorla sonlandırılıyor");
+            Environment.Exit(0);
+        }, TaskScheduler.Default);
     }
 
     public void Skip(ReleaseInfo release)

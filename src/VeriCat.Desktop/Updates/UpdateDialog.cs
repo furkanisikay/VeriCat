@@ -131,7 +131,8 @@ internal sealed class UpdateDialog : Form
 
         FormClosing += (_, e) =>
         {
-            if (service?.Installing == true) e.Cancel = true;   // yarıda bırakılmasın
+            // İndirme yarıda bırakılmasın; ama uygulama kapanıyorsa (güncelleme sonrası yeniden başlatma) asla engelleme.
+            if (service?.Downloading == true && e.CloseReason == CloseReason.UserClosing) e.Cancel = true;
             cts?.Cancel();
         };
     }
