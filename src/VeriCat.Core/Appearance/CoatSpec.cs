@@ -32,6 +32,12 @@ public sealed record CoatSpec
         ("Karamel", Derived(0xE9CFA8, 0x5AA7E8, true)),
     };
 
+    /// <summary>Özelleştirmede hızlı seçim için göz renkleri.</summary>
+    public static readonly IReadOnlyList<uint> EyePresets = new uint[]
+    {
+        0x7FBF4D, 0xE9B949, 0xF5CB4B, 0x6FB6F0, 0x5AA7E8, 0xC78A3B, 0x8ED1A5,
+    };
+
     /// <summary>Tasma renkleri; hazır kediler sırayla bunları alır.</summary>
     public static readonly IReadOnlyList<uint> CollarPresets = new uint[]
     {

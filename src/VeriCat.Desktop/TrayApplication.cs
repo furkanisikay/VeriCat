@@ -3,20 +3,23 @@ using System.Drawing.Imaging;
 using VeriCat.Core.Appearance;
 using VeriCat.Core.Behavior;
 using VeriCat.Core.Configuration;
+using VeriCat.Core.Updates;
 using VeriCat.Core.World;
 using VeriCat.Desktop.Audio;
 using VeriCat.Desktop.Customization;
 using VeriCat.Desktop.Native;
 using VeriCat.Desktop.Platform;
 using VeriCat.Desktop.Rendering;
+using VeriCat.Desktop.Theming;
+using VeriCat.Desktop.Updates;
 using VeriCat.Desktop.Views;
 
 namespace VeriCat.Desktop;
 
-/// <summary>Görev çubuğu tepsisindeki uygulama: kedileri, dünya taramasını ve ana döngüyü yönetir.</summary>
+/// <summary>Görev çubuğu tepsisindeki uygulama: kedileri, dünya taramasını, güncellemeleri ve ana döngüyü yönetir.</summary>
 internal sealed class TrayApplication : ApplicationContext, ICatHost
 {
-    const double ScanInterval = 1.0 / 15;
+    const double ScanInterval = 1.0 / 15, FullscreenInterval = 0.5;
 
     readonly SettingsStore store = SettingsStore.ForCurrentUser();
     readonly AppSettings settings;
@@ -24,15 +27,23 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
     readonly double dpi;
     readonly WorldModel world = new();
     readonly Win32WorldScanner scanner;
+    readonly FullscreenDetector fullscreen = new();
     readonly SoundPlayerVoice voice;
     readonly CatEnvironment env;
     readonly Colony colony;
+    readonly Dictionary<Cat, CatWindow> windows = new();
+    readonly List<Image> menuImages = new();
+    readonly UpdateService updates;
     readonly NativeWindow menuHost = new();
     readonly NotifyIcon tray;
+    readonly ContextMenuStrip trayMenu;
     readonly System.Windows.Forms.Timer timer = new() { Interval = 15 };
     CustomizeForm? customizer;
+    UpdateDialog? updateDialog;
     Cat? customizing;
-    double last, scanClock;
+    Action? balloonAction;
+    double last, scanClock, fullscreenClock;
+    bool hidden;
 
     public TrayApplication()
     {
@@ -45,11 +56,15 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
             World = world, Voice = voice, Pointer = new CursorPointer(), Settings = settings, Clock = Now, Dpi = dpi,
         };
         colony = new Colony(env);
+        updates = new UpdateService(settings, Save);
+        updates.AvailableChanged += (_, _) => OnUpdateAvailable();
 
         menuHost.CreateHandle(new CreateParams());
         RefreshWorld();
 
-        tray = new NotifyIcon { Icon = MakeIcon(), Text = "VeriCat", Visible = true, ContextMenuStrip = BuildMenu() };
+        trayMenu = MenuStyle.Apply(new ContextMenuStrip());
+        trayMenu.Opening += (_, _) => PopulateTrayMenu();
+        tray = new NotifyIcon { Icon = MakeIcon(), Text = "VeriCat", Visible = true, ContextMenuStrip = trayMenu };
         tray.MouseClick += (_, e) =>
         {
             // Sol tık da menüyü açsın.
@@ -57,6 +72,7 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
                 typeof(NotifyIcon).GetMethod("ShowContextMenu", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                     ?.Invoke(tray, null);
         };
+        tray.BalloonTipClicked += (_, _) => { var a = balloonAction; balloonAction = null; a?.Invoke(); };
 
         var saved = settings.Cats.ToList();
         if (saved.Count == 0) AddCat(); else saved.ForEach(Spawn);
@@ -65,6 +81,9 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         last = Now();
         timer.Tick += (_, _) => Tick();
         timer.Start();
+
+        updates.Start();
+        _ = ShowWhatsNewIfUpdatedAsync();
     }
 
     double Now() => stopwatch.Elapsed.TotalSeconds;
@@ -73,6 +92,15 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
     {
         double now = Now(), dt = Math.Min(0.05, now - last);
         last = now;
+
+        fullscreenClock += dt;
+        if (fullscreenClock > FullscreenInterval)
+        {
+            fullscreenClock = 0;
+            SetHidden(settings.HideInFullscreen && fullscreen.IsForegroundFullscreen());
+        }
+        if (hidden) return;   // tam ekran: ne tarama ne çizim, işlemci boşta
+
         scanClock += dt;
         if (scanClock > ScanInterval) { scanClock = 0; RefreshWorld(); }
         colony.Step(dt);
@@ -80,8 +108,21 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
 
     void RefreshWorld()
     {
-        var windows = settings.Windows ? scanner.Windows(settings.InnerWindows) : new List<WindowSnapshot>();
-        world.Update(scanner.Screens(), windows, dpi, settings.InnerWindows);
+        var found = settings.Windows ? scanner.Windows(settings.InnerWindows) : new List<WindowSnapshot>();
+        world.Update(scanner.Screens(), found, dpi, settings.InnerWindows);
+    }
+
+    /// <summary>Tam ekran uygulama öndeyken kedileri saklar; çıkınca geri getirir.</summary>
+    void SetHidden(bool value)
+    {
+        if (value == hidden) return;
+        hidden = value;
+        foreach (var w in windows.Values)
+        {
+            if (hidden) w.Hide();
+            else w.Show();
+        }
+        if (!hidden) { RefreshWorld(); last = Now(); }
     }
 
     /// <summary>
@@ -94,18 +135,26 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         m.Show(Cursor.Position);
     }
 
+    void Balloon(string title, string text, Action? onClick = null)
+    {
+        balloonAction = onClick;
+        tray.ShowBalloonTip(6000, title, text, ToolTipIcon.None);
+    }
+
     // MARK: Kediler
 
     void Spawn(CatConfig config)
     {
-        double x = world.MinX + 100 + Random.Shared.NextDouble() * Math.Max(1, world.MaxX - world.MinX - 200);
+        var (screen, _) = world.ScreenNear(Cursor.Position.X, -Cursor.Position.Y);
+        double x = screen.Bounds.MinX + 100 + Random.Shared.NextDouble() * Math.Max(1, screen.Bounds.Width - 200);
         var window = new CatWindow(this, settings, dpi);
-        var cat = new Cat(config, env, window, x, world.TopY - 160 * dpi);
+        var cat = new Cat(config, env, window, x, screen.WorkTop - 160 * dpi);
         window.Attach(cat);
         cat.ConfigChanged += (_, _) => Save();
         colony.Add(cat);
-        cat.Present();
-        window.Show();
+        windows[cat] = window;
+        cat.Present(force: true);
+        if (!hidden) window.Show();
     }
 
     void Save()
@@ -120,9 +169,24 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         Save();
     }
 
+    void AddRandomCat()
+    {
+        Spawn(CatConfig.Random(Random.Shared, settings.Scale));
+        Save();
+    }
+
+    void Duplicate(Cat cat)
+    {
+        var copy = cat.Config.Clone();
+        copy.Name = CatConfig.SanitizeName(copy.Name + " 2") ?? copy.Name;
+        Spawn(copy);
+        Save();
+    }
+
     public void CloseCat(Cat cat)
     {
         colony.Remove(cat);
+        windows.Remove(cat);
         cat.Dismiss();
         if (customizing == cat) customizer?.Close();
         Save();
@@ -139,53 +203,112 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         customizer.Open(cat);
     }
 
+    // MARK: Kedi menüsü
+
     public void ShowCatMenu(Cat cat)
     {
         cat.CancelGrab();
-        var m = new ContextMenuStrip();
-        m.Items.Add(new ToolStripMenuItem(cat.Config.Name) { Enabled = false });
+        var m = MenuStyle.Apply(new ContextMenuStrip());
+        int icon = MenuStyle.IconSize(m);
+        var coat = Coat.From(cat.Config);
+        m.Items.Add(new MenuHeader(Avatar(coat, (int)(30 * dpi)), cat.Config.Name, Describe(cat), coat.Collar));
         m.Items.Add(new ToolStripSeparator());
-        m.Items.Add("Miyavla", null, (_, _) => cat.Meow());
-        m.Items.Add(cat.IsAsleep ? "Uyandır" : "Uyut", null, (_, _) => { if (cat.IsAsleep) cat.Wake(); else cat.Sleep(); });
-        m.Items.Add("Özelleştir…", null, (_, _) => Customize(cat));
+        m.Items.Add(MenuStyle.Item("Miyavla", Glyph.Paw, icon, cat.Meow));
+        m.Items.Add(MenuStyle.Item(cat.IsAsleep ? "Uyandır" : "Uyut", Glyph.Moon, icon, () => { if (cat.IsAsleep) cat.Wake(); else cat.Sleep(); }));
+        m.Items.Add(MenuStyle.Item("Yanıma gel", Glyph.Target, icon, cat.Summon));
         m.Items.Add(new ToolStripSeparator());
-        m.Items.Add("Yeni kedi ekle", null, (_, _) => AddCat());
-        m.Items.Add("Bu kediyi kapat", null, (_, _) => CloseCat(cat));
+        m.Items.Add(MenuStyle.Item("Özelleştir…", Glyph.Palette, icon, () => Customize(cat)));
+        m.Items.Add(MenuStyle.Item("Kopyasını oluştur", Glyph.Plus, icon, () => Duplicate(cat)));
+        m.Items.Add(MenuStyle.Item("Rastgele yeni kedi", Glyph.Dice, icon, AddRandomCat));
         m.Items.Add(new ToolStripSeparator());
-        m.Items.Add("Uygulamadan çık", null, (_, _) => Application.Exit());
+        m.Items.Add(MenuStyle.Item("Bu kediyi kapat", Glyph.Close, icon, () => CloseCat(cat), MenuTag.Danger));
         m.Closed += (_, _) => cat.Paused = false;
         cat.Paused = true;
         ShowMenu(m);
     }
 
+    static string Describe(Cat cat)
+    {
+        string state = cat.State switch
+        {
+            CatState.Walk => "Geziniyor",
+            CatState.Chase => "Fareyi kovalıyor",
+            CatState.Sit => "Oturuyor",
+            CatState.Happy => "Mutlu",
+            CatState.Sleep => "Uyuyor",
+            CatState.Crouch or CatState.Air => "Zıplıyor",
+            CatState.Dragged => "Havada",
+            CatState.Petted => "Mırlıyor",
+            CatState.Flee => "Kaçıyor",
+            CatState.Fight => "Kavga ediyor!",
+            CatState.Stalk => "Pusuda",
+            CatState.Swat => "Yumruk atıyor",
+            _ => "",
+        };
+        var t = cat.Config.Personality;
+        var (value, word) = new[]
+        {
+            (t.Playfulness, "oyuncu"), (t.Temper, "kavgacı"), (t.Affection, "sevecen"), (t.Energy, "enerjik"), (1 - t.Energy, "uykucu"),
+        }.MaxBy(x => x.Item1);
+        return value > 0.65 ? $"{state} · {word}" : state;
+    }
+
+    static Bitmap Avatar(Coat coat, int size)
+    {
+        var bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
+        using var g = Graphics.FromImage(bmp);
+        CatPainter.DrawHead(g, coat, size);
+        return bmp;
+    }
+
     // MARK: Tepsi menüsü
 
-    ContextMenuStrip BuildMenu()
+    void PopulateTrayMenu()
     {
-        var m = new ContextMenuStrip();
-        m.Items.Add("Miyavla", null, (_, _) => MeowAll());
-        m.Items.Add("Uyut / Uyandır", null, (_, _) =>
+        var m = trayMenu;
+        foreach (ToolStripItem old in m.Items.Cast<ToolStripItem>().ToList()) old.Dispose();
+        m.Items.Clear();
+        foreach (var img in menuImages) img.Dispose();
+        menuImages.Clear();
+        int icon = MenuStyle.IconSize(m);
+        var P = Theme.Current;
+
+        m.Items.Add(new MenuHeader(Avatar(Coat.From(CoatSpec.Presets[0].Spec, CoatSpec.CollarPresets[0]), (int)(30 * dpi)),
+            "VeriCat", $"{colony.Cats.Count} kedi · {AppInfo.DisplayVersion}", P.Accent));
+        m.Items.Add(new ToolStripSeparator());
+
+        if (updates.Available is ReleaseInfo r)
+            m.Items.Add(MenuStyle.Item($"Güncelleme var: v{r.Version}", Glyph.Sparkle, icon, () => OpenUpdateDialog(r), MenuTag.Highlight));
+
+        var add = MenuStyle.Submenu("Kedi ekle", Glyph.Plus, icon);
+        add.DropDownItems.Add(MenuStyle.Item("Sıradaki hazır kedi", Glyph.Paw, icon, AddCat));
+        add.DropDownItems.Add(MenuStyle.Item("Rastgele kedi", Glyph.Dice, icon, AddRandomCat));
+        m.Items.Add(add);
+
+        var customize = MenuStyle.Submenu("Özelleştir", Glyph.Palette, icon);
+        foreach (var c in colony.Cats)
+        {
+            var cat = c;
+            var avatar = Avatar(Coat.From(cat.Config), icon);
+            menuImages.Add(avatar);
+            customize.DropDownItems.Add(new ToolStripMenuItem(cat.Config.Name, avatar, (_, _) => Customize(cat))
+            { Padding = new Padding(2, 3, 2, 3) });
+        }
+        if (colony.Cats.Count == 0) customize.DropDownItems.Add(new ToolStripMenuItem("Hiç kedi yok") { Enabled = false });
+        m.Items.Add(customize);
+
+        m.Items.Add(MenuStyle.Item("Kedileri çağır", Glyph.Target, icon, () => { foreach (var c in colony.Cats) c.Summon(); }));
+        m.Items.Add(MenuStyle.Item("Hepsi miyavlasın", Glyph.Paw, icon, MeowAll));
+        m.Items.Add(MenuStyle.Item(colony.Cats.Any(c => c.IsAsleep) ? "Hepsini uyandır" : "Hepsini uyut", Glyph.Moon, icon, () =>
         {
             if (colony.Cats.Any(c => c.IsAsleep)) foreach (var c in colony.Cats) c.Wake();
             else foreach (var c in colony.Cats) c.Sleep();
-        });
-        m.Items.Add(new ToolStripSeparator());
-        m.Items.Add("Kedi ekle", null, (_, _) => AddCat());
-        var customize = new ToolStripMenuItem("Özelleştir");
-        customize.DropDownItems.Add("-");   // DropDownOpening tetiklensin diye yer tutucu
-        customize.DropDownOpening += (_, _) =>
-        {
-            customize.DropDownItems.Clear();
-            foreach (var c in colony.Cats) customize.DropDownItems.Add(c.Config.Name, null, (_, _) => Customize(c));
-            if (colony.Cats.Count == 0) customize.DropDownItems.Add(new ToolStripMenuItem("Hiç kedi yok") { Enabled = false });
-        };
-        m.Items.Add(customize);
-        m.Items.Add(new ToolStripSeparator());
+        }));
 
-        var size = new ToolStripMenuItem("Boyut (hepsi)");
+        var size = MenuStyle.Submenu("Boyut (hepsi)", Glyph.Resize, icon);
         foreach (var (name, v) in new[] { ("Küçük", 0.6), ("Orta", 1.0), ("Büyük", 1.5), ("Dev", 2.2) })
         {
-            var item = new ToolStripMenuItem(name) { Tag = v };
+            var item = new ToolStripMenuItem(name) { Checked = Math.Abs(v - settings.Scale) < 0.01, Padding = new Padding(2, 3, 2, 3) };
             item.Click += (_, _) =>
             {
                 settings.Scale = v;
@@ -196,36 +319,39 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         }
         m.Items.Add(size);
 
-        var toggles = new[]
-        {
-            Toggle("Pencerelerin üstüne çıksın", () => settings.Windows, v => { settings.Windows = v; RefreshWorld(); }),
-            Toggle("Pencere içlerine de zıplasın", () => settings.InnerWindows, v => { settings.InnerWindows = v; RefreshWorld(); }),
-            Toggle("Fareyi kovalasın", () => settings.Chase, v => settings.Chase = v),
-            Toggle("Fareye yumruk atınca imleci itsin", () => settings.PunchCursor, v => settings.PunchCursor = v),
-            Toggle("Tasmada isim görünsün", () => settings.ShowNames, v => settings.ShowNames = v),
-            Toggle("Ses", () => settings.Sound, v => settings.Sound = v),
-            Toggle("Windows ile başlat", () => AutoStart.IsEnabled, AutoStart.Set),
-        };
-        m.Items.AddRange(toggles);
         m.Items.Add(new ToolStripSeparator());
-        m.Items.Add(new ToolStripMenuItem("İpucu: kediye sağ tıkla, üstünde fareyi gezdirerek okşa") { Enabled = false });
-        m.Items.Add("Çıkış", null, (_, _) => Application.Exit());
+        m.Items.Add(MenuStyle.Caption("DAVRANIŞ"));
+        m.Items.Add(Toggle("Pencerelerin üstüne çıksın", Glyph.Window, icon, () => settings.Windows, v => { settings.Windows = v; RefreshWorld(); }));
+        m.Items.Add(Toggle("Pencere içlerine de zıplasın", Glyph.Layers, icon, () => settings.InnerWindows, v => { settings.InnerWindows = v; RefreshWorld(); }));
+        m.Items.Add(Toggle("Fareyi kovalasın", Glyph.Target, icon, () => settings.Chase, v => settings.Chase = v));
+        m.Items.Add(Toggle("Yumruk imleci itsin", Glyph.Fist, icon, () => settings.PunchCursor, v => settings.PunchCursor = v));
+        m.Items.Add(Toggle("Tasmada isim görünsün", Glyph.Tag, icon, () => settings.ShowNames, v => settings.ShowNames = v));
+        m.Items.Add(Toggle("Tam ekranda saklansın", Glyph.EyeOff, icon, () => settings.HideInFullscreen, v => settings.HideInFullscreen = v));
+        m.Items.Add(Toggle("Ses", Glyph.Sound, icon, () => settings.Sound, v => settings.Sound = v));
 
-        m.Opening += (_, _) =>
+        m.Items.Add(new ToolStripSeparator());
+        m.Items.Add(MenuStyle.Caption("UYGULAMA"));
+        m.Items.Add(Toggle("Windows ile başlat", Glyph.Power, icon, () => AutoStart.IsEnabled, AutoStart.Set));
+
+        var upd = MenuStyle.Submenu("Güncellemeler", Glyph.Update, icon);
+        foreach (var (name, mode) in new[] { ("Otomatik yükle", UpdateMode.Automatic), ("Sorarak yükle", UpdateMode.Notify), ("Kapalı", UpdateMode.Off) })
         {
-            foreach (ToolStripMenuItem i in size.DropDownItems) i.Checked = Math.Abs((double)i.Tag! - settings.Scale) < 0.01;
-            foreach (var t in toggles) ((Action)t.Tag!)();
-        };
-        return m;
+            var item = new ToolStripMenuItem(name) { Checked = settings.Updates == mode, Padding = new Padding(2, 3, 2, 3) };
+            item.Click += (_, _) => { settings.Updates = mode; Save(); };
+            upd.DropDownItems.Add(item);
+        }
+        upd.DropDownItems.Add(new ToolStripSeparator());
+        upd.DropDownItems.Add(MenuStyle.Item("Şimdi denetle", Glyph.Update, icon, () => _ = CheckForUpdatesAsync()));
+        m.Items.Add(upd);
+
+        m.Items.Add(MenuStyle.Item($"Yenilikler ({AppInfo.DisplayVersion})", Glyph.Info, icon, () => _ = ShowWhatsNewAsync(AppInfo.Version)));
+        m.Items.Add(MenuStyle.Item("Çıkış", Glyph.Exit, icon, Application.Exit));
+
+        MenuStyle.StyleSubmenus(m.Items);
     }
 
-    ToolStripMenuItem Toggle(string title, Func<bool> get, Action<bool> set)
-    {
-        var item = new ToolStripMenuItem(title);
-        item.Tag = (Action)(() => item.Checked = get());
-        item.Click += (_, _) => { set(!get()); Save(); };
-        return item;
-    }
+    ToggleMenuItem Toggle(string title, Glyph glyph, int icon, Func<bool> get, Action<bool> set) =>
+        MenuStyle.Toggle(title, glyph, icon, get, v => { set(v); Save(); });
 
     void MeowAll()
     {
@@ -235,6 +361,61 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
             var c = colony.Cats[i];
             Task.Delay(i * 350).ContinueWith(_ => c.Meow(), ui);
         }
+    }
+
+    // MARK: Güncellemeler
+
+    void OnUpdateAvailable()
+    {
+        if (updates.Available is not ReleaseInfo r || settings.Updates != UpdateMode.Notify) return;
+        Balloon($"VeriCat v{r.Version} çıktı", "Yenilikleri görmek ve güncellemek için tıkla.", () => OpenUpdateDialog(r));
+    }
+
+    void OpenUpdateDialog(ReleaseInfo release)
+    {
+        if (updateDialog is { IsDisposed: false }) { updateDialog.Activate(); return; }
+        updateDialog = new UpdateDialog(release, updates, settings, Save);
+        updateDialog.Show();
+        updateDialog.Activate();
+    }
+
+    async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            if (await updates.CheckAsync(manual: true) is ReleaseInfo r) OpenUpdateDialog(r);
+            else Balloon("VeriCat güncel", $"En son sürümü kullanıyorsun ({AppInfo.DisplayVersion}).");
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+        {
+            Balloon("Güncelleme denetlenemedi", "GitHub'a ulaşılamadı. İnternet bağlantını kontrol et.");
+        }
+    }
+
+    /// <summary>Güncellemeden sonraki ilk açılışta yenilikleri duyurur.</summary>
+    async Task ShowWhatsNewIfUpdatedAsync()
+    {
+        bool updated = UpdatePolicy.IsFirstRunAfterUpdate(AppInfo.Version, settings.LastSeenVersion);
+        if (!AppInfo.Version.IsDevelopment && settings.LastSeenVersion != AppInfo.Version.ToString())
+        {
+            settings.LastSeenVersion = AppInfo.Version.ToString();
+            Save();
+        }
+        if (!updated) return;
+        await Task.Delay(1500);
+        Balloon($"VeriCat v{AppInfo.Version} sürümüne güncellendi", "Neler yeni? Görmek için tıkla.", () => _ = ShowWhatsNewAsync(AppInfo.Version));
+    }
+
+    async Task ShowWhatsNewAsync(SemVersion version)
+    {
+        var notes = version.IsDevelopment ? null : await updates.NotesForAsync(version);
+        if (notes == null)
+        {
+            Process.Start(new ProcessStartInfo(AppInfo.RepoUrl + "/releases") { UseShellExecute = true });
+            return;
+        }
+        using var dlg = new UpdateDialog(notes, null, settings, Save);
+        dlg.ShowDialog();
     }
 
     Icon MakeIcon()
@@ -251,7 +432,9 @@ internal sealed class TrayApplication : ApplicationContext, ICatHost
         {
             timer.Dispose();
             tray.Dispose();
+            trayMenu.Dispose();
             voice.Dispose();
+            updates.Dispose();
             menuHost.DestroyHandle();
         }
         base.Dispose(disposing);

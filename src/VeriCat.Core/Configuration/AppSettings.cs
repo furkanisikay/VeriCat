@@ -23,5 +23,26 @@ public sealed class AppSettings
 
     public bool Sound { get; set; } = true;
 
+    /// <summary>Tam ekran bir uygulama (oyun, video, sunum) öndeyken kediler saklanır ve simülasyon durur.</summary>
+    public bool HideInFullscreen { get; set; } = true;
+
+    public UpdateMode Updates { get; set; } = UpdateMode.Notify;
+
+    /// <summary>"Bu sürümü atla" denen sürüm; bu sürüm için tekrar bildirim yapılmaz.</summary>
+    public string? SkippedVersion { get; set; }
+
+    /// <summary>En son çalışan sürüm. Değiştiyse "yenilikler" gösterilir.</summary>
+    public string? LastSeenVersion { get; set; }
+
     public List<CatConfig> Cats { get; set; } = new();
+}
+
+public enum UpdateMode
+{
+    /// <summary>Arka planda indirir, kurar ve yeniden başlar.</summary>
+    Automatic,
+    /// <summary>Yeni sürümü bildirir; kullanıcı yenilikleri görüp onaylayınca kurar.</summary>
+    Notify,
+    /// <summary>Kendiliğinden denetlemez (elle denetleme yine çalışır).</summary>
+    Off,
 }

@@ -6,10 +6,11 @@ namespace VeriCat.Core.World;
 public sealed class WorldModel : IWorld
 {
     readonly Dictionary<long, RectU> frames = new();
-    List<(RectU Bounds, Platform Floor)> screens = new();
+    List<(ScreenSnapshot Screen, Platform Floor)> screens = new() { (new ScreenSnapshot(new RectU(0, -1080, 1920, 0), 0, -1040), new Platform(-1040, 0, 1920, -1)) };
 
     public IReadOnlyList<Platform> Platforms { get; private set; } = Array.Empty<Platform>();
     public IReadOnlyDictionary<long, RectU> Frames => frames;
+    public IReadOnlyList<ScreenSnapshot> Screens { get; private set; } = Array.Empty<ScreenSnapshot>();
     public double MinX { get; private set; }
     public double MaxX { get; private set; } = 1920;
     public double TopY { get; private set; }
@@ -17,8 +18,29 @@ public sealed class WorldModel : IWorld
 
     public Platform? FloorAt(double x, double y)
     {
-        foreach (var s in screens) if (s.Bounds.Contains(x, y)) return s.Floor;
+        foreach (var s in screens) if (s.Screen.Bounds.Contains(x, y)) return s.Floor;
         return null;
+    }
+
+    public bool IsOnAnyScreen(double x, double y)
+    {
+        foreach (var s in screens) if (s.Screen.Bounds.Contains(x, y)) return true;
+        return false;
+    }
+
+    public (ScreenSnapshot Screen, Platform Floor) ScreenNear(double x, double y)
+    {
+        (ScreenSnapshot, Platform) best = screens[0];
+        double bestD = double.MaxValue;
+        foreach (var s in screens)
+        {
+            var b = s.Screen.Bounds;
+            if (b.Contains(x, y)) return s;
+            double dx = Math.Max(0, Math.Max(b.MinX - x, x - b.MaxX)), dy = Math.Max(0, Math.Max(b.MinY - y, y - b.MaxY));
+            double d = dx * dx + dy * dy;
+            if (d < bestD) { bestD = d; best = s; }
+        }
+        return best;
     }
 
     /// <param name="screens">En az bir ekran.</param>
@@ -35,7 +57,8 @@ public sealed class WorldModel : IWorld
         BottomY = screens.Min(s => s.WorkBottom);
 
         var platforms = PlatformBuilder.Build(screens, windowsFrontToBack, dpi, includeInner);
-        this.screens = screens.Select((s, i) => (s.Bounds, platforms[i])).ToList();
+        this.screens = screens.Select((s, i) => (s, platforms[i])).ToList();
+        Screens = screens;
 
         frames.Clear();
         foreach (var w in windowsFrontToBack) frames[w.Handle] = w.Frame;

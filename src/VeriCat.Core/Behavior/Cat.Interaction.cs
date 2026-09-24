@@ -88,9 +88,9 @@ public sealed partial class Cat
         petIdle = 0;
         if (state == CatState.Petted || petting < 90 * D) return;
 
-        if (Rng.NextDouble() < MoodyChance) { RunFrom(Pointer.Position.X, scared: false); return; }
+        if (Rng.NextDouble() < MoodyChance * 2 * (1 - Traits.Affection)) { RunFrom(Pointer.Position.X, scared: false); return; }
         Set(CatState.Petted, 1, 1);
-        petPatience = R(4, 12);
+        petPatience = R(2, 6) + 12 * Traits.Affection;
         Voice.Purr();
     }
 
@@ -102,8 +102,8 @@ public sealed partial class Cat
         if (petIdle > 0.8) { Set(CatState.Happy, 1.2, 2); return; }
         if (stateTime < petPatience) return;
 
-        // Fazla okşandı: yarısında imlece bir pati atıp kaçar, yarısında doğrudan kaçar.
-        if (Rng.NextDouble() < 0.5) StartSwat(punches: 1, fleeAfter: true);
+        // Fazla okşandı: huysuzluğu oranında imlece bir pati atıp kaçar, yoksa doğrudan kaçar.
+        if (Rng.NextDouble() < Traits.Temper) StartSwat(punches: 1, fleeAfter: true);
         else RunFrom(Pointer.Position.X, scared: false);
     }
 
@@ -115,6 +115,17 @@ public sealed partial class Cat
         Set(CatState.Flee, 1.0, 1.8);
         if (scared || Rng.Next(2) == 0) Voice.Meow(Config.Pitch, scared: true);
     }
+
+    /// <summary>İmlecin yanına gelir ve sevinir (yumruk atmaz).</summary>
+    public void Summon()
+    {
+        if (state is CatState.Air or CatState.Dragged or CatState.Crouch) return;
+        summoned = true;
+        Set(CatState.Chase, 8, 8);
+        if (Rng.Next(2) == 0) Voice.Meow(Config.Pitch);
+    }
+
+    bool summoned;
 
     public void Meow()
     {

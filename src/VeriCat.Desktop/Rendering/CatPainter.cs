@@ -266,6 +266,7 @@ internal sealed partial class CatPainter
         }
 
         if (collar) CollarTag(h, look);
+        if (collar) DrawAccessory(h, look);
     }
 
     /// <summary>Çenenin altında görünen tasma bandı (kafadan önce çizilir, uçları kafanın altında kalır).</summary>
@@ -326,5 +327,6 @@ internal sealed partial class CatPainter
         Fill(Oval(t.X + 2, t.Y - 8, 40, 13), c.Belly, false);
         foreach (var (dx, top) in new[] { (-16f, 12f), (-4f, 14f), (8f, 14f) })
             Stripe(P(t.X + dx, t.Y + top), P(t.X + dx + 2, t.Y + top - 9));
+        Spots(P(t.X - 4, t.Y + 4), 22, 1);
     }
 }

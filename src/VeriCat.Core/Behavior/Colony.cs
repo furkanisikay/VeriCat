@@ -16,6 +16,9 @@ public sealed class Colony
     /// <summary>İki kedi karşılaştığında kavga çıkma olasılığı.</summary>
     public double FightChance { get; set; } = 0.5;
 
+    /// <summary>İki ortalama sevecenlikteki (0.5) kedi karşılaştığında selamlaşma olasılığı; sevecenlikle doğru orantılı.</summary>
+    public double GreetChance { get; set; } = 0.25;
+
     /// <summary>Aynı kedi çifti için karar sonrası bekleme (saniye).</summary>
     public double ContactCooldown { get; set; } = 2.5;
 
@@ -50,7 +53,16 @@ public sealed class Colony
                 {
                     a.ContactCooldownUntil = b.ContactCooldownUntil = now + ContactCooldown;
                     bool approaching = a.IsMovingToward(b) || b.IsMovingToward(a);
-                    if (approaching && a.CanFight && b.CanFight && env.Random.NextDouble() < FightChance)
+                    // Tek zar: alt uç kavga (huysuzlukla artar), üst uç dost selamı (sevecenlikle artar).
+                    double roll = env.Random.NextDouble();
+                    double fight = FightChance * (a.Traits.Temper + b.Traits.Temper);
+                    double greet = GreetChance * 2 * Math.Min(a.Traits.Affection, b.Traits.Affection);
+                    if (approaching && a.CanGreet && b.CanGreet && roll >= 1 - greet && roll >= fight)
+                    {
+                        a.Greet(b);
+                        b.Greet(a);
+                    }
+                    else if (approaching && a.CanFight && b.CanFight && roll < fight)
                     {
                         // Kavga mesafesi: hafif iç içe, ama üst üste değil.
                         double want = min * 0.8;
@@ -60,8 +72,11 @@ public sealed class Colony
                         b.BeginFight(a, leader: false, duration);
                         continue;
                     }
-                    a.Bump(b);
-                    b.Bump(a);
+                    else
+                    {
+                        a.Bump(b);
+                        b.Bump(a);
+                    }
                 }
 
                 double overlap = min - dist;

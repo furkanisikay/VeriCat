@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using VeriCat.Core.Rendering;
 using VeriCat.Desktop.Rendering;
+using VeriCat.Desktop.Theming;
 
 namespace VeriCat.Desktop.Customization;
 
@@ -13,9 +14,8 @@ internal sealed class PreviewBox : Control
 
     public PreviewBox()
     {
-        DoubleBuffered = true;
         Cursor = Cursors.Hand;
-        SetStyle(ControlStyles.ResizeRedraw, true);
+        SetStyle(ControlStyles.ResizeRedraw | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
         timer.Tick += (_, _) =>
         {
             clock += 1.0 / 30;
@@ -38,11 +38,13 @@ internal sealed class PreviewBox : Control
     {
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
+        var p = Theme.Current;
+        g.Clear(Parent?.BackColor ?? p.Background);
         using (var card = CatPainter.RoundRect(new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f), 12))
         {
-            using var bg = new SolidBrush(Color.FromArgb(0xFB, 0xF8, 0xF3));
+            using var bg = new SolidBrush(p.Surface);
             g.FillPath(bg, card);
-            using var border = new Pen(Color.FromArgb(0xDD, 0xD6, 0xCC));
+            using var border = new Pen(p.Border);
             g.DrawPath(border, card);
         }
         if (Coat == null) return;

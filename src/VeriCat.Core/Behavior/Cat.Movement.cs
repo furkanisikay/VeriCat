@@ -71,6 +71,7 @@ public sealed partial class Cat
             if (cur is Platform c && c.SameSurface(p) && c.MinX == p.MinX) return false;
             if (p.IsInner && !inner) return false;
             if (p.IsFloor && p.Y >= py - 5) return false;
+            if (!FitsUnderScreenTop(p)) return false;
             double dy = p.Y - py, nearest = Math.Clamp(px, p.MinX, p.MaxX);
             return dy < maxUp && dy > -700 * D && p.Width > 50 * s && Math.Abs(nearest - px) < reach;
         }).ToList();
@@ -128,11 +129,13 @@ public sealed partial class Cat
         if (px < lo) { px = lo; vx = Math.Abs(vx) * 0.4; }
         if (px > hi) { px = hi; vx = -Math.Abs(vx) * 0.4; }
         if (Math.Abs(vx) > 30 * D) facingRight = vx > 0;
-        double ceiling = World.TopY - (SpriteHeight - SpriteGround) * s;
-        if (py > ceiling) { py = ceiling; vy = Math.Min(vy, 0); }
         // Görev çubuğu bölgesine bırakıldıysa zemine çıkar.
         if (vy <= 0 && World.FloorAt(px, py) is Platform f && py < f.Y) { py = f.Y; Land(f, -vy); }
-        else if (py < World.BottomY - 400 * D) { px = (World.MinX + World.MaxX) / 2; py = ceiling; vx = vy = 0; }
+        else if (py < World.BottomY - 400 * D)
+        {   // güvenlik ağı: hiçbir ekranın içinde değil, en yakın ekranın ortasından yeniden düşer
+            var (screen, _) = World.ScreenNear(px, py);
+            px = screen.Bounds.MidX; py = screen.WorkTop - Headroom; vx = vy = 0;
+        }
     }
 
     void Land(Platform p, double impactSpeed)
