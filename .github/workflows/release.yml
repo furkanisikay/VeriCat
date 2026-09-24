@@ -1,0 +1,55 @@
+name: Release
+
+# main/master'a her merge'de:
+#   1. testler çalışır,
+#   2. semantic-release commit mesajlarından (Conventional Commits) bir sonraki sürümü hesaplar
+#      (feat → minor, fix/perf/refactor → patch, BREAKING CHANGE → major),
+#   3. exe'yi o sürüm numarasıyla derler, SHA-256 özetini çıkarır,
+#   4. CHANGELOG.md'yi günceller, vX.Y.Z etiketini atar,
+#   5. sürüm notlarıyla GitHub Release oluşturup exe + özeti yükler.
+# Uygulamadaki güncelleyici bu Release'i okur. Sürüm gerektiren commit yoksa hiçbir şey yayınlanmaz.
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write        # etiket, release, CHANGELOG commit'i
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  release:
+    name: Sürüm yayınla
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: dotnet test VeriCat.slnx -c Release
+      - run: npm ci
+      - name: semantic-release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_AUTHOR_NAME: VeriCat Release Bot
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: VeriCat Release Bot
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com

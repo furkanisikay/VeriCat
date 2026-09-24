@@ -1,0 +1,32 @@
+name: PR başlığı
+
+# Squash merge'de PR başlığı commit mesajı olur ve sürüm numarasını o belirler.
+# Bu yüzden başlık Conventional Commits biçiminde olmalı: "feat: …", "fix(kedi): …", "feat!: …"
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            chore
+            style
+            revert
+          requireScope: false
