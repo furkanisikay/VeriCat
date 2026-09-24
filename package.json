@@ -1,0 +1,20 @@
+{
+  "name": "vericat-release",
+  "private": true,
+  "description": "Yalnızca sürüm otomasyonu (semantic-release) için. Uygulamanın kendisi .NET'tir.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.14"
+  },
+  "scripts": {
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run --no-ci"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^11.0.1",
+    "conventional-changelog-conventionalcommits": "^9.1.0",
+    "semantic-release": "^25.0.9"
+  }
+}

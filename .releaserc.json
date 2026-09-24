@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json.schemastore.org/semantic-release",
+  "branches": ["main", "master"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          { "type": "refactor", "release": "patch" },
+          { "type": "style", "release": false },
+          { "scope": "no-release", "release": false }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            { "type": "feat", "section": "Yenilikler" },
+            { "type": "fix", "section": "Düzeltmeler" },
+            { "type": "perf", "section": "Performans" },
+            { "type": "refactor", "section": "İyileştirmeler" },
+            { "type": "revert", "section": "Geri alınanlar" },
+            { "type": "docs", "hidden": true },
+            { "type": "style", "hidden": true },
+            { "type": "test", "hidden": true },
+            { "type": "build", "hidden": true },
+            { "type": "ci", "hidden": true },
+            { "type": "chore", "hidden": true }
+          ]
+        }
+      }
+    ],
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md",
+        "changelogTitle": "# Değişiklik günlüğü\n\nBu dosya her sürümde otomatik güncellenir ([semantic-release](https://semantic-release.gitbook.io)). Elle düzenlemeyin."
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "SKIP_TESTS=1 ./build/publish.sh ${nextRelease.version}"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md"],
+        "message": "chore(release): v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          { "path": "artifacts/release/VeriCat.exe", "label": "VeriCat.exe (Windows 10/11, kurulumsuz)" },
+          { "path": "artifacts/release/VeriCat.exe.sha256", "label": "SHA-256 özeti" }
+        ],
+        "successComment": false,
+        "failComment": false,
+        "releasedLabels": false
+      }
+    ]
+  ]
+}

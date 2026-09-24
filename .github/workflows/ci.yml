@@ -1,14 +1,19 @@
 name: CI
 
+# Her PR'da ve özellik dallarına push'ta: derle, test et, Windows exe'sini artefakt olarak yükle.
+# main/master'a gelen değişiklikler release.yml ile sürüm olarak yayınlanır.
 on:
-  push:
-    branches: [main]
-    tags: ['v*']
   pull_request:
+  push:
+    branches-ignore: [main, master]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   DOTNET_NOLOGO: true
@@ -33,7 +38,7 @@ jobs:
           path: TestResults
 
   publish:
-    name: Windows exe
+    name: Windows exe (önizleme)
     needs: test
     runs-on: windows-latest
     steps:
@@ -41,9 +46,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - run: dotnet publish src/VeriCat.Desktop/VeriCat.Desktop.csproj -p:PublishProfile=win-x64
+      - run: .\build\publish.ps1 -SkipTests
+        shell: pwsh
       - uses: actions/upload-artifact@v4
         with:
           name: VeriCat-win-x64
-          path: artifacts/publish/win-x64/VeriCat.exe
+          path: artifacts/release/
           if-no-files-found: error

@@ -6,6 +6,9 @@ artifacts/
 publish/
 *.exe
 
+# Sürüm otomasyonu (npm)
+node_modules/
+
 # IDE
 .vs/
 .idea/
