@@ -55,10 +55,11 @@ public sealed partial class Cat
         if (fightLeader && stateTime >= stateLength) ResolveFight(o);
     }
 
-    /// <summary>Kazananı seçer (iri kedinin şansı fazla); kaybeden kaçar.</summary>
+    /// <summary>Kazananı seçer (iri ve huysuz kedinin şansı fazla); kaybeden kaçar.</summary>
     void ResolveFight(Cat o)
     {
-        bool iWin = Rng.NextDouble() < S / (S + o.S);
+        double mine = S * (0.5 + Traits.Temper), theirs = o.S * (0.5 + o.Traits.Temper);
+        bool iWin = Rng.NextDouble() < mine / (mine + theirs);
         var (winner, loser) = iWin ? (this, o) : (o, this);
         foreach (var c in new[] { this, o })
         {
@@ -68,6 +69,16 @@ public sealed partial class Cat
         loser.RunFrom(winner.px, scared: true);
         winner.Set(CatState.Sit, 1.5, 3);
         if (Rng.NextDouble() < 0.4) Voice.Meow(winner.Config.Pitch);
+    }
+
+    internal bool CanGreet => !Paused && state is CatState.Walk or CatState.Sit or CatState.Chase;
+
+    /// <summary>Dost selamı: birbirine dönüp sevinirler.</summary>
+    internal void Greet(Cat other)
+    {
+        facingRight = other.px > px;
+        Set(CatState.Happy, 1.5, 2.5);
+        if (Rng.Next(2) == 0) Voice.Meow(Config.Pitch);
     }
 
     /// <summary>Diğer kediye kavgasız çarptı.</summary>
@@ -87,8 +98,8 @@ public sealed partial class Cat
     /// <summary>Çarpışma çözümü: kediyi yatayda iter (dünya sınırları içinde).</summary>
     internal void Shove(double dx)
     {
-        double s = S;
-        px = Math.Clamp(px + dx, World.MinX + 35 * s, World.MaxX - 35 * s);
+        px += dx;
         if (state == CatState.Fight) fightAnchor += dx;
+        KeepOnScreen();
     }
 }

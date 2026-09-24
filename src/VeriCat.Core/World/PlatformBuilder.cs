@@ -36,9 +36,9 @@ public static class PlatformBuilder
 
             // Üst kenar: ekranın tepesine yapışık (tam ekran/maksimize) pencerelerde anlamsız.
             if (top < screenTop - 12 * dpi)
-                AddVisible(result, front, top, rect.MinX + 10 * dpi, rect.MaxX - 10 * dpi, w.Handle, 0, 40 * dpi);
+                AddVisible(result, screens, front, top, rect.MinX + 10 * dpi, rect.MaxX - 10 * dpi, w.Handle, 0, 40 * dpi);
 
-            if (includeInner) AddInner(result, front, w, screenTop, dpi);
+            if (includeInner) AddInner(result, screens, front, w, screenTop, dpi);
 
             front.Add(rect);
         }
@@ -46,7 +46,7 @@ public static class PlatformBuilder
     }
 
     /// <summary>Pencerenin içindeki alt bölümlerin üst kenarları (raf gibi).</summary>
-    static void AddInner(List<Platform> result, List<RectU> front, WindowSnapshot w, double screenTop, double dpi)
+    static void AddInner(List<Platform> result, IReadOnlyList<ScreenSnapshot> screens, List<RectU> front, WindowSnapshot w, double screenTop, double dpi)
     {
         var rect = w.Frame;
         var added = new List<Platform>();
@@ -66,19 +66,41 @@ public static class PlatformBuilder
                 continue;
 
             int before = result.Count;
-            AddVisible(result, front, y, lo, hi, w.Handle, child.Handle, 60 * dpi);
+            AddVisible(result, screens, front, y, lo, hi, w.Handle, child.Handle, 60 * dpi);
             for (int i = before; i < result.Count; i++) added.Add(result[i]);
         }
     }
 
-    /// <summary>Öndeki pencerelerin örttüğü parçaları atıp kalanları ekler.</summary>
-    static void AddVisible(List<Platform> result, List<RectU> front, double y, double lo, double hi, long owner, long part, double minWidth)
+    /// <summary>Ekran dışında kalan ve öndeki pencerelerin örttüğü parçaları atıp kalanları ekler.</summary>
+    static void AddVisible(List<Platform> result, IReadOnlyList<ScreenSnapshot> screens, List<RectU> front,
+        double y, double lo, double hi, long owner, long part, double minWidth)
     {
-        var segs = new List<(double Lo, double Hi)> { (lo, hi) };
+        var segs = ClipToScreens(lo, hi, y, screens);
         foreach (var o in front)
             if (o.MinY < y && o.MaxY > y + 1) segs = Segments.Subtract(segs, o.MinX, o.MaxX);
         foreach (var (a, b) in segs)
             if (b - a > minWidth) result.Add(new Platform(y, a, b, owner, part));
+    }
+
+    /// <summary>
+    /// [lo, hi] aralığının y yüksekliğinde bir ekranın içinde kalan kısımları. Yan yana ekranlar birleştirilir;
+    /// pencerenin ekran dışına taşan kenarı kediye yol olmaz.
+    /// </summary>
+    internal static List<(double Lo, double Hi)> ClipToScreens(double lo, double hi, double y, IReadOnlyList<ScreenSnapshot> screens)
+    {
+        var parts = screens
+            .Where(s => y >= s.Bounds.MinY && y < s.Bounds.MaxY)
+            .Select(s => (Lo: Math.Max(lo, s.Bounds.MinX), Hi: Math.Min(hi, s.Bounds.MaxX)))
+            .Where(p => p.Hi > p.Lo)
+            .OrderBy(p => p.Lo)
+            .ToList();
+        var merged = new List<(double Lo, double Hi)>();
+        foreach (var p in parts)
+        {
+            if (merged.Count > 0 && p.Lo <= merged[^1].Hi + 1) merged[^1] = (merged[^1].Lo, Math.Max(merged[^1].Hi, p.Hi));
+            else merged.Add(p);
+        }
+        return merged;
     }
 
     static double ScreenTopAt(IReadOnlyList<ScreenSnapshot> screens, double x, double y, double fallback)

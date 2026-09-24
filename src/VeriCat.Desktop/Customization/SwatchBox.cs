@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using VeriCat.Core.Appearance;
 using VeriCat.Desktop.Rendering;
+using VeriCat.Desktop.Theming;
 
 namespace VeriCat.Desktop.Customization;
 
@@ -13,10 +14,10 @@ internal sealed class SwatchBox : Control
     public SwatchBox(int preset)
     {
         Preset = preset;
-        Size = new Size(28, 28);
+        Size = new Size(30, 30);
         Margin = new Padding(1);
         Cursor = Cursors.Hand;
-        DoubleBuffered = true;
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
     }
 
     public int Preset { get; }
@@ -32,11 +33,12 @@ internal sealed class SwatchBox : Control
     {
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.Clear(Parent?.BackColor ?? Theme.Current.Background);
         var spec = CoatSpec.Presets[Preset].Spec;
-        float w = Width, ring = w * 0.09f, inset = w * 0.18f;
+        float w = Math.Min(Width, Height), ring = w * 0.09f, inset = w * 0.18f;
         if (selected)
         {
-            using var pen = new Pen(SystemColors.Highlight, ring);
+            using var pen = new Pen(Theme.Current.Accent, ring);
             g.DrawEllipse(pen, ring, ring, w - 2 * ring, w - 2 * ring);
         }
         var dot = new RectangleF(inset, inset, w - 2 * inset, w - 2 * inset);

@@ -103,6 +103,7 @@ public sealed partial class Cat
                     Decide();
                 break;
         }
+        KeepOnScreen();
     }
 
     void TickTimers(double dt)
@@ -115,25 +116,51 @@ public sealed partial class Cat
     void Set(CatState s, double min, double max)
     {
         if (state == CatState.Fight && s != CatState.Fight) opponent = null;
+        if (s != CatState.Chase) summoned = false;
         state = s; stateTime = 0; stateLength = R(min, max);
     }
 
+    internal Personality Traits => Config.Personality;
+
+    /// <summary>Sıradaki işi karakterine göre ağırlıklı seçer.</summary>
     void Decide()
     {
-        int r = Rng.Next(100);
-        if (r < 34) { facingRight = Rng.Next(2) == 0; Set(CatState.Walk, 2, 6); }
-        else if (r < 54) Set(CatState.Sit, 2, 5);
-        else if (r < 62) Set(CatState.Sleep, 10, 25);
-        else if (r < 84) { if (!(Settings.Windows && TryJump())) Set(CatState.Walk, 2, 4); }
-        else if (Settings.Chase) Set(CatState.Chase, 3, 6);
-        else Set(CatState.Sit, 2, 4);
+        double energy = Traits.Energy;
+        double walk = 30 + 10 * energy, sit = 20, sleep = 12 * (1.2 - energy), jump = 16 + 12 * energy;
+        double chase = Settings.Chase ? 24 * Traits.Playfulness : 0;
+        double r = Rng.NextDouble() * (walk + sit + sleep + jump + chase);
+
+        if ((r -= walk) < 0) { facingRight = Rng.Next(2) == 0; Set(CatState.Walk, 2, 6); }
+        else if ((r -= sit) < 0) Set(CatState.Sit, 2, 5);
+        else if ((r -= sleep) < 0) Set(CatState.Sleep, 10, 25);
+        else if ((r -= jump) < 0) { if (!(Settings.Windows && TryJump())) Set(CatState.Walk, 2, 4); }
+        else Set(CatState.Chase, 3, 6);
         if (Rng.Next(14) == 0) Voice.Meow(Config.Pitch);
     }
 
     // MARK: Çizim
 
-    /// <summary>Kareyi görünüme gönderir.</summary>
-    public void Present() => view.Present(px, py, S, MakeSprite());
+    /// <summary>Sakin durumlarda (oturma, uyku) saniyede en fazla bu kadar kare çizilir.</summary>
+    internal const double CalmFrameRate = 20;
+
+    double lastPresentAt = double.MinValue, lastPresentX, lastPresentY;
+    CatState lastPresentState;
+    int lastPresentVersion = -1;
+
+    /// <summary>
+    /// Kareyi görünüme gönderir. Kedi yerinde oturuyor ya da uyuyorsa kare hızını düşürür
+    /// (nefes ve kuyruk animasyonu 20 fps'de de akıcı; işlemci ve GDI yükü ~3 kat azalır).
+    /// </summary>
+    public void Present(bool force = false)
+    {
+        double now = Now;
+        bool calm = state is CatState.Sit or CatState.Sleep && !Paused;
+        if (!force && calm && lastPresentState == state && lastPresentX == px && lastPresentY == py &&
+            lastPresentVersion == AppearanceVersion && now - lastPresentAt < 1 / CalmFrameRate)
+            return;
+        lastPresentAt = now; lastPresentX = px; lastPresentY = py; lastPresentState = state; lastPresentVersion = AppearanceVersion;
+        view.Present(px, py, S, MakeSprite());
+    }
 
     public void Dismiss() => view.Close();
 

@@ -36,7 +36,7 @@ public sealed partial class Cat
         if (!Settings.Chase || pointerSpeed < 900 * D || Now < huntCooldownUntil) return;
         double dx = Math.Abs(pointerX - px), dy = pointerY - py;
         if (dx > 320 * S || dy < -60 * S || dy > MaxJumpHeight) return;
-        if (Rng.NextDouble() < dt * 1.5) Set(CatState.Chase, 3, 6);
+        if (Rng.NextDouble() < dt * 3 * Traits.Playfulness) Set(CatState.Chase, 3, 6);
     }
 
     void ChaseStep(double dt)
@@ -45,6 +45,13 @@ public sealed partial class Cat
         double dx = mx - px, dy = my - py, adx = Math.Abs(dx);
         if (adx > 2 * D) facingRight = dx > 0;
 
+        if (summoned)
+        {   // çağrıldı: yanına varınca sevinir, avlanmaz
+            if (adx < 60 * S) { summoned = false; Set(CatState.Happy, 2, 3); return; }
+            if (!Stride(dt, 200 * S * Config.Speed, true)) { summoned = false; Set(CatState.Sit, 1, 2); }
+            return;
+        }
+
         if (adx < 50 * S)
         {
             if (dy > -10 * S && dy < 115 * S) { StartSwat(Rng.Next(2, 4), fleeAfter: false); return; }
@@ -52,7 +59,7 @@ public sealed partial class Cat
             Set(CatState.Sit, 1, 2);   // imleç ulaşamayacağı yerde: oturup izler
             return;
         }
-        if (adx < 190 * S && dy > -20 * S && dy < MaxJumpHeight && Now >= huntCooldownUntil && Rng.NextDouble() < dt * 1.2)
+        if (adx < 190 * S && dy > -20 * S && dy < MaxJumpHeight && Now >= huntCooldownUntil && Rng.NextDouble() < dt * 2.4 * Traits.Playfulness)
         {
             Set(CatState.Stalk, 0.6, 1.1);
             return;

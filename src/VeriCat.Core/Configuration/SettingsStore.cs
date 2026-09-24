@@ -66,6 +66,9 @@ public sealed class SettingsStore
             c.Spec ??= Appearance.CoatSpec.Presets[0].Spec;
             c.Scale = Math.Clamp(c.Scale, 0.3, 3);
             c.Speed = Math.Clamp(c.Speed, 0.2, 3);
+            c.Personality = (c.Personality ?? new Personality()).Clamped();
+            c.Markings &= Markings.Socks | Markings.Bib | Markings.Spots;
+            if (!Enum.IsDefined(c.Accessory)) c.Accessory = Accessory.None;
         }
         return s;
     }

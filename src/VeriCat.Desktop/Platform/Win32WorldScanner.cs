@@ -32,13 +32,36 @@ internal sealed class Win32WorldScanner
         {
             if (!Candidate(h, out var rect)) return true;
             var children = includeChildren && result.Count < MaxWindowsWithChildren
-                ? Children(h)
+                ? CachedChildren(h, rect, Now)
                 : (IReadOnlyList<ChildSnapshot>)Array.Empty<ChildSnapshot>();
             result.Add(new WindowSnapshot((long)h, rect, children));
             return true;
         }, IntPtr.Zero);
+
+        // Kapanan pencerelerin önbelleğini at.
+        if (childCache.Count > result.Count * 2)
+        {
+            var alive = result.Select(w => (IntPtr)w.Handle).ToHashSet();
+            foreach (var k in childCache.Keys.Where(k => !alive.Contains(k)).ToList()) childCache.Remove(k);
+        }
         return result;
     }
+
+    /// <summary>
+    /// Alt pencere taraması en pahalı kısım. Pencere yerinden oynamadıysa sonuç 0.5 sn boyunca yeniden kullanılır;
+    /// böylece durağan bir masaüstünde tarama maliyeti ~7 kat düşer.
+    /// </summary>
+    IReadOnlyList<ChildSnapshot> CachedChildren(IntPtr h, RectU frame, long now)
+    {
+        if (childCache.TryGetValue(h, out var c) && c.Frame == frame && now - c.At < ChildCacheMs) return c.Children;
+        var kids = Children(h);
+        childCache[h] = (frame, kids, now);
+        return kids;
+    }
+
+    const long ChildCacheMs = 500;
+    readonly Dictionary<IntPtr, (RectU Frame, List<ChildSnapshot> Children, long At)> childCache = new();
+    static long Now => Environment.TickCount64;
 
     /// <summary>Kedinin üstüne çıkabileceği normal, görünür bir üst düzey pencere mi?</summary>
     bool Candidate(IntPtr h, out RectU rect)

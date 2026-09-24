@@ -17,6 +17,8 @@
     <ApplicationVisualStyles>true</ApplicationVisualStyles>
     <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <!-- Türkçe tarih/ay adları için kültür verisi gerekir (Windows'ta ICU hazır gelir, boyutu artırmaz). -->
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>

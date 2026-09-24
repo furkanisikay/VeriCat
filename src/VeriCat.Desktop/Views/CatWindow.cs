@@ -63,7 +63,7 @@ internal sealed class CatWindow : Form, ICatView
         if (IsDisposed || cat == null) return;
         if (coat == null || coatVersion != cat.AppearanceVersion)
         {
-            coat = Coat.From(cat.Config.Spec, cat.Config.Collar);
+            coat = Coat.From(cat.Config);
             coatVersion = cat.AppearanceVersion;
         }
         int w = (int)Math.Ceiling(CatPainter.BaseW * scale), h = (int)Math.Ceiling(CatPainter.BaseH * scale);
