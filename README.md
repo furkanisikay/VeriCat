@@ -13,7 +13,11 @@ Windows 10/11 · .NET 10 · kurulum gerektirmeyen tek exe · kendini GitHub'dan 
 |---|---|
 | **Özelleştirme** | İsim, kürk (hazır + özel renk), göz rengi, desen (çizgili, benekli, beyaz pati, beyaz göğüs), tasma rengi, aksesuar (zil, fiyonk, taç, çiçek, gözlük), boyut, hız, ses tonu. Tek tıkla rastgele kedi. |
 | **Karakter** | Her kedinin oyunculuk, huysuzluk, sevecenlik ve enerji ayarı var ve davranışı gerçekten değiştiriyor: kavgacı kedi daha çok kavga eder, sevecen kedi okşanmaya dayanır ve diğerleriyle selamlaşır, uykucu kedi daha çok uyur. |
-| **Fizik** | Yerçekimi, balistik zıplama, pencere taşınınca üstündeki kedi de kayar, çoklu monitör. Kediler hiçbir zaman ekranın dışına taşmaz. |
+| **Fizik** | Yerçekimi, balistik zıplama, pencere taşınınca üstündeki kedi de kayar, çoklu monitör. Kediler hiçbir zaman ekranın dışına taşmaz. **Pencereyi hızlıca sallarsan üstündeki kedi (ve yumak) savrulur.** |
+| **İhtiyaçlar** | Tokluk, sevgi, oyun ve enerji zamanla azalır. Acıkan kedi mama kabına gider, kap boşsa gelip sana miyavlar; yalnız kalan yanına gelir; sıkılan yumağa saldırır; yorulan uyur. Kafasının üstündeki düşünce baloncuğu ne istediğini söyler. Kedi menüsünde çubuklarla görünür. Hiçbir şey cezalandırmaz; uygulama kapalıyken geçen zaman nazikçe işler. |
+| **Eşyalar** | **Yumak**: fırlat, seker, yuvarlanır; kediler peşinden koşup pati atar, birbirinden kapar. **Mama kabı**: koy, doldur (çift tık); aç kediler gelip yer, mama azalır. Eşyalar da pencerelerin üstünde durur, fareyle fırlatılabilir. |
+| **İlişkiler** | Kediler kiminle kavga ettiğini ve kiminle selamlaştığını hatırlar. Arkadaşlar daha az kavga eder, yan yana kıvrılıp uyur; rakipler karşılaşınca tıslar. |
+| **Gün döngüsü** | Gece (23:00–07:00) kediler çok daha fazla uyur. |
 | **Pencere içleri** | Ara ara pencerelerin içindeki bölümlerin (araç çubuğu, panel, liste…) üst kenarlarına da zıplar. |
 | **Kediler arası** | Aynı zemindeki kediler birbirinin içinden geçmez. Karşılaşınca geri döner, selamlaşır ya da kavga eder (kabarık kuyruk, tıslama, toz bulutu). Kaybeden kaçar. |
 | **Okşama** | Fareyi tuşa basmadan kedinin üstünde gezdir: mırlar, kalpler çıkar. Bazen keyfi yoktur ve kaçar; çok okşanırsa pati atar. |
@@ -28,7 +32,18 @@ Windows 10/11 · .NET 10 · kurulum gerektirmeyen tek exe · kendini GitHub'dan 
 - **Kediye sağ tık** (ya da Ctrl + sol tık): kediye özel menü.
 - **Sürükle bırak**: kediyi tutup fırlat. **Tıkla**: miyavlar. **Üstünde fareyi gezdir**: okşa.
 
-Menüler Windows'un açık/koyu temasını izler. Ayarlar `%APPDATA%\VeriCat\settings.json` dosyasındadır.
+Menüler Windows'un açık/koyu temasını izler. Ayarlar `%APPDATA%\VeriCat\settings.json`, günlük
+`%LOCALAPPDATA%\VeriCat\logs\vericat.log` dosyasındadır.
+
+## Sorun bildirme
+
+Tepsi menüsü → **Sorun bildir**: tarayıcıda sürüm, Windows ve ekran bilgisiyle (ve günlüğün son satırlarıyla)
+doldurulmuş bir GitHub issue açılır. Kullanıcı adın ve kişisel klasör yolların metinden çıkarılır; hiçbir şey sen
+"Submit" demeden gönderilmez. Beklenmeyen bir hata olursa uygulama da bunu teklif eder. **Öneri gönder** fikirler içindir.
+
+## Lisans
+
+[MIT](LICENSE) © 2026 Furkan IŞIKAY
 
 ## Güncellemeler
 

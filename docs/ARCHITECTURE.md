@@ -47,6 +47,8 @@ Fizik y ekseni **yukarı** bakan bir sistemde çalışır (`y = -ekranY`). Dön�
 | `Cat.Interaction.cs` | Sürükleme, tıklama, okşama |
 | `Cat.Hunting.cs` | İmleç kovalama, pusu, atlayış, yumruk |
 | `Cat.Social.cs` | Çarpışma tepkisi, kavga, kazanan seçimi |
+| `Cat.Needs.cs` | İhtiyaca göre hedef seçme, hedefe gitme, yeme, yumakla oynama, sokulma, düşünce baloncuğu |
+| `Cat.Bounds.cs` | Ekranda kalma |
 
 ```
           ┌──────── Decide ────────┐
@@ -93,6 +95,36 @@ Not: Chromium/Electron/UWP gibi kendi içini çizen uygulamalar alt pencere yay�
 | Huysuzluk | Karşılaşmada kavga olasılığı (iki kedinin toplamı), kavgayı kazanma, fazla okşanınca pati atma |
 | Sevecenlik | Okşanınca kaçma olasılığı, okşanma sabrı, selamlaşma olasılığı |
 | Enerji | Yürüme/zıplama ağırlığı ↑, uyku ağırlığı ↓ |
+
+## İhtiyaçlar, hedefler ve ilişkiler
+
+- `Vitals` (Core): tokluk, sevgi, oyun, enerji (0–1). Saniyede azalır; uyku enerjiyi, yeme tokluğu, okşama sevgiyi,
+  oyun (kovalama, yumruk, yumak) eğlenceyi doldurur. `CatConfig` ile saklanır; kapalıyken geçen süre üçte bir hızla
+  ve bir tabanın altına indirmeden uygulanır.
+- `Cat.Needs.cs`: `Decide()` önce acil ihtiyaca bakar ve bir **hedef** (`Goal`) seçer: mama kabı, yumak, uyuyan
+  arkadaşın yanı ya da imleç (mama/sevgi istemek). `Seek` durumu hedefe yürür; hedef aşağıdaysa kenardan atlar,
+  yukarıdaysa `TryJumpTo` ile balistik zıplar. Varınca `Eat`, pati, uyku ya da miyavlama.
+- Düşünce baloncuğu (`Emote`) ihtiyacı görünür kılar; çizimi `CatPainter.Effects`.
+- `BondBook`: kedi çiftleri için -1…1 ilişki. Kavga −, selam +. Arkadaşlarda kavga ¼, selam ×2; uyuyan arkadaşın
+  yanına sokulma ve temas olunca uyandırmama. Rakiplerde kavga ×2 (üst sınır %75), selam yok, tıslama.
+- Gece (yerel saat 23–07) uyku ağırlığı ×4. Saat `CatEnvironment.LocalTime` ile verilir (testte sabit).
+
+## Eşyalar ve pencere eylemsizliği
+
+`Prop` (Core) kediden bağımsız bir fizik gövdesidir: yerçekimi, yumakta sekme ve yuvarlanma sürtünmesi, kabın hemen
+durması, pencereyle birlikte kayma, ekran sınırları, fareyle tutup fırlatma. Hareket etmeyen eşya hiç çizilmez.
+`Colony.ResolveToys` yuvarlanan yumağın kedilere çarpmasını ve refleks patileri çözer.
+
+Hem kedi hem eşya, üstünde durduğu pencerenin **hızını** ölçer (iki tarama arası yer değişimi / geçen süre).
+2200 px/sn'yi aşan sallamada eylemsizlikle savrulur. Uzun süre duran bir pencerenin ilk hareketi yavaş sayılır;
+böylece pencereyi yakalamak ya da yapıştırmak (snap) kediyi fırlatmaz, sadece gerçekten sallamak fırlatır.
+
+## Tanılama
+
+`Log` (Core): dönen, 512 KB sınırlı dosya günlüğü; pencere başlığı gibi kişisel veri yazılmaz. `IssueReport`
+önceden doldurulmuş GitHub issue adresi üretir: ortam tablosu, hata, günlük kuyruğu; kullanıcı adı/ev klasörü
+çıkarılır, adres 7500 karakteri aşmayacak şekilde kısaltılır. Desktop tarafı yakalanmayan hataları günlüğe yazar ve
+bildirmeyi teklif eder.
 
 ## Performans
 
