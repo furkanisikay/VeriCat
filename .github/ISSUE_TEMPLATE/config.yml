@@ -1,0 +1,2 @@
+# Uygulamadaki "Sorun bildir" menüsü önceden doldurulmuş boş bir issue açar; bu yüzden boş issue'lara izin verilir.
+blank_issues_enabled: true

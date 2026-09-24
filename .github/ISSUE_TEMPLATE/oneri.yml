@@ -1,0 +1,16 @@
+name: Öneri
+description: Kedilerin yapmasını istediğin yeni bir şey.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Fikir
+      description: Kedilerin ne yapmasını isterdin? Nasıl görünmeli?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Neden?
+      description: Bu sana ne katardı?

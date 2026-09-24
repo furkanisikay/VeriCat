@@ -1,4 +1,5 @@
 using VeriCat.Core.Configuration;
+using VeriCat.Core.Diagnostics;
 using VeriCat.Core.Updates;
 
 namespace VeriCat.Desktop.Updates;
@@ -59,6 +60,7 @@ internal sealed class UpdateService : IDisposable
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException or IOException or InvalidDataException or UnauthorizedAccessException)
         {
             // Ağ yok, GitHub erişilemiyor ya da dosya doğrulanamadı: bir sonraki denetimde tekrar denenir.
+            Log.Warn($"Güncelleme denetimi başarısız: {e.GetType().Name}: {e.Message}");
         }
     }
 
@@ -70,6 +72,7 @@ internal sealed class UpdateService : IDisposable
         {
             var latest = await client.LatestAsync();
             var offer = UpdatePolicy.ShouldOffer(AppInfo.Version, latest, settings.SkippedVersion, manual) ? latest : null;
+            Log.Info($"Güncelleme denetimi: en son {latest?.Version.ToString() ?? "yok"}, sunulan {offer?.Version.ToString() ?? "yok"}");
             if (offer != Available)
             {
                 Available = offer;
@@ -89,9 +92,11 @@ internal sealed class UpdateService : IDisposable
         try
         {
             var path = Path.Combine(UpdateInstaller.DownloadFolder, $"VeriCat-{release.Version}.exe");
+            Log.Info($"v{release.Version} indiriliyor");
             await client.DownloadAsync(release, path, progress, ct);
             settings.SkippedVersion = null;
             save();
+            Log.Info($"v{release.Version} doğrulandı, kuruluyor ve yeniden başlatılıyor");
             UpdateInstaller.InstallAndRestart(path);
             Application.Exit();
         }
