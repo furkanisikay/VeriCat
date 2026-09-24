@@ -1,61 +1,74 @@
 # VeriCat
 
-Masaüstünde yaşayan kediler. Görev çubuğunun üstünde gezinir, pencerelerin üstüne ve içlerindeki bölümlere zıplar,
-fareyi kovalayıp yumruklar, birbirleriyle itişip kavga eder, okşanınca mırlarlar.
+Masaüstünde yaşayan, tamamen özelleştirilebilir kediler. Görev çubuğunun üstünde gezinir, pencerelerin üstüne ve
+içlerindeki bölümlere zıplar, fareyi kovalayıp yumruklar, birbirleriyle selamlaşıp kavga eder, okşanınca mırlarlar.
 
-Windows 10/11 · .NET 10 · WinForms · tek dosyalık, kurulum gerektirmeyen exe.
+Windows 10/11 · .NET 10 · kurulum gerektirmeyen tek exe · kendini GitHub'dan günceller.
+
+**[En son sürümü indir →](https://github.com/furkanisikay/VeriCat/releases/latest)**
 
 ## Özellikler
 
 | | |
 |---|---|
-| **Fizik** | Yerçekimi, balistik zıplama, pencere taşınınca üstündeki kedi de kayar, çoklu monitör. |
+| **Özelleştirme** | İsim, kürk (hazır + özel renk), göz rengi, desen (çizgili, benekli, beyaz pati, beyaz göğüs), tasma rengi, aksesuar (zil, fiyonk, taç, çiçek, gözlük), boyut, hız, ses tonu. Tek tıkla rastgele kedi. |
+| **Karakter** | Her kedinin oyunculuk, huysuzluk, sevecenlik ve enerji ayarı var ve davranışı gerçekten değiştiriyor: kavgacı kedi daha çok kavga eder, sevecen kedi okşanmaya dayanır ve diğerleriyle selamlaşır, uykucu kedi daha çok uyur. |
+| **Fizik** | Yerçekimi, balistik zıplama, pencere taşınınca üstündeki kedi de kayar, çoklu monitör. Kediler hiçbir zaman ekranın dışına taşmaz. |
 | **Pencere içleri** | Ara ara pencerelerin içindeki bölümlerin (araç çubuğu, panel, liste…) üst kenarlarına da zıplar. |
-| **Çarpışma ve kavga** | Aynı zemindeki kediler birbirinin içinden geçmez. Karşılaşınca ya geri dönerler ya da kavga çıkar: kulaklar geride, kuyruk kabarık, tıslama, toz bulutu. Kaybeden kaçar; iri kedinin kazanma şansı fazladır. |
-| **Okşama** | Fareyi tuşa basmadan kedinin üstünde gezdir: mırlar, gözlerini kısar, kalpler çıkar. Bazen keyfi yoktur ve kaçar; çok uzun okşanırsa bıkıp eline pati atar ya da gider. |
-| **Fare avı** | İmleci kovalar, pusuya yatıp kıçını sallar, üstüne atlar; yakınındaysa arka ayakları üstünde kalkıp yumruk atar. İsabet eden yumruk imleci biraz iter (kapatılabilir; bir tuş basılıyken asla itmez). |
-| **Tasma** | Her kedinin renkli bir tasması ve üstünde okunaklı isim etiketi var. Tasma rengi özelleştirilebilir. |
-| **Özelleştirme** | İsim, kürk/göz/tasma rengi, çizgili desen, boyut, hız, ses tonu. |
+| **Kediler arası** | Aynı zemindeki kediler birbirinin içinden geçmez. Karşılaşınca geri döner, selamlaşır ya da kavga eder (kabarık kuyruk, tıslama, toz bulutu). Kaybeden kaçar. |
+| **Okşama** | Fareyi tuşa basmadan kedinin üstünde gezdir: mırlar, kalpler çıkar. Bazen keyfi yoktur ve kaçar; çok okşanırsa pati atar. |
+| **Fare avı** | Pusu, üstüne atlama, arka ayaklar üstünde yumruk kombosu. İsabet eden yumruk imleci biraz iter (kapatılabilir). |
+| **Tasma** | Renkli tasma ve üstünde okunaklı isim etiketi. |
+| **Performans** | Oturan/uyuyan kediler düşük kare hızında çizilir, pencere içi tarama önbelleklenir, tam ekran uygulama (oyun, video, sunum) öndeyken kediler saklanır ve simülasyon tamamen durur. |
+| **Güncelleme** | GitHub'dan yeni sürümü denetler. İstersen arka planda sessizce güncellenir, istersen önce yenilikleri gösterip onay ister. İndirilen dosya SHA-256 ile doğrulanır. |
 
 ## Kullanım
 
-- Tepsi simgesine tıkla: kedi ekle, boyut, davranış ayarları, çıkış.
-- Kediye **sağ tık** (ya da Ctrl + sol tık): kediye özel menü.
-- **Sürükle bırak**: kediyi tutup fırlat.
-- **Tıkla**: miyavlar ve sevinir.
-- **Üstünde fareyi gezdir**: okşa.
+- **Tepsi simgesi**: kedi ekle (hazır / rastgele), özelleştir, kedileri çağır, davranış ayarları, güncellemeler.
+- **Kediye sağ tık** (ya da Ctrl + sol tık): kediye özel menü.
+- **Sürükle bırak**: kediyi tutup fırlat. **Tıkla**: miyavlar. **Üstünde fareyi gezdir**: okşa.
 
-Ayarlar `%APPDATA%\VeriCat\settings.json` dosyasında saklanır. Eski "Kedi" sürümünün ayarları ilk açılışta otomatik okunur.
+Menüler Windows'un açık/koyu temasını izler. Ayarlar `%APPDATA%\VeriCat\settings.json` dosyasındadır.
 
-## Derleme
+## Güncellemeler
+
+Tepsi menüsü → **Güncellemeler**:
+
+| Mod | Davranış |
+|---|---|
+| Otomatik yükle | Açılıştan kısa süre sonra ve 6 saatte bir denetler; yeni sürümü indirir, doğrular, yerine koyar ve yeniden başlar. Açılışta "yenilikler" bildirimi gösterir. |
+| Sorarak yükle (varsayılan) | Yeni sürüm çıkınca bildirim gösterir; tıklayınca sürüm notlarını gösteren pencere açılır: *Güncelle*, *Sonra*, *Bu sürümü atla*. |
+| Kapalı | Kendiliğinden denetlemez. *Şimdi denetle* yine çalışır. |
+
+Exe'nin bulunduğu klasöre yazılamıyorsa (ör. `Program Files`) güncelleme yapılamaz; uygulama bunu söyler.
+
+## Geliştirme
 
 Gereksinim: [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```bash
-dotnet build VeriCat.slnx          # tüm çözüm (Linux/macOS'ta da derlenir)
-dotnet test VeriCat.slnx           # birim testleri
+dotnet build VeriCat.slnx
+dotnet test VeriCat.slnx
+./build/publish.sh          # macOS/Linux → artifacts/release/VeriCat.exe (+ .sha256)
+.\build\publish.ps1         # Windows
 ```
 
-Tek dosyalık exe (`artifacts/publish/win-x64/VeriCat.exe`):
+Yerel derlemeler `0.0.0` sürümündedir ve kendini güncellemez.
 
-```powershell
-.\build\publish.ps1     # Windows
-```
+## Sürüm yayınlama
 
-```bash
-./build/publish.sh      # macOS / Linux (çapraz derleme)
-```
-
-CI her push'ta testleri çalıştırır ve Windows exe'sini `VeriCat-win-x64` artefaktı olarak yükler.
+Elle bir şey yapmaya gerek yok. `main`/`master`'a her merge'de [release](.github/workflows/release.yml) iş akışı
+commit mesajlarına bakarak sürüm numarasını belirler, `CHANGELOG.md`'yi günceller, etiketi atar ve exe'yi
+sürüm notlarıyla birlikte GitHub Release olarak yayınlar. Commit kuralları: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Proje yapısı
 
 ```
 src/
-  VeriCat.Core/        Platformdan bağımsız çekirdek: davranış, fizik, çarpışma, platform üretimi, ayarlar, ses sentezi
-  VeriCat.Desktop/     Windows kabuğu: tepsi uygulaması, katmanlı pencereler, Win32 tarama, GDI+ çizim, ses çalma
+  VeriCat.Core/        Platformdan bağımsız: davranış, fizik, çarpışma, platformlar, ayarlar, ses sentezi, güncelleme mantığı
+  VeriCat.Desktop/     Windows: tepsi, katmanlı pencereler, Win32 tarama, çizim, tema/menüler, özelleştirme, güncelleyici
 tests/
-  VeriCat.Core.Tests/  xUnit testleri (deterministik simülasyon)
+  VeriCat.Core.Tests/  xUnit (deterministik simülasyon, sahte HTTP)
 build/                 Yayın betikleri
 docs/                  Mimari notları
 ```
