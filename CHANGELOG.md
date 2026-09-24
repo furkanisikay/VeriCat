@@ -2,6 +2,12 @@
 
 Bu dosya her sürümde otomatik güncellenir ([semantic-release](https://semantic-release.gitbook.io)). Elle düzenlemeyin.
 
+## [1.1.1](https://github.com/furkanisikay/VeriCat/compare/v1.1.0...v1.1.1) (2026-09-24)
+
+### Düzeltmeler
+
+* **güncelleme:** kurulumdan sonra "yeniden başlatılıyor"da takılma düzeltildi ([1b46e04](https://github.com/furkanisikay/VeriCat/commit/1b46e04c9c31b5f976be3842e870b88b35fe7080))
+
 ## [1.1.0](https://github.com/furkanisikay/VeriCat/compare/v1.0.0...v1.1.0) (2026-09-24)
 
 ### Yenilikler
