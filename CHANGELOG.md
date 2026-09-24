@@ -2,6 +2,13 @@
 
 Bu dosya her sürümde otomatik güncellenir ([semantic-release](https://semantic-release.gitbook.io)). Elle düzenlemeyin.
 
+## [1.1.0](https://github.com/furkanisikay/VeriCat/compare/v1.0.0...v1.1.0) (2026-09-24)
+
+### Yenilikler
+
+* **destek:** Sorun bildir ve Öneri gönder GitHub issue'larına bağlandı ([b71d037](https://github.com/furkanisikay/VeriCat/commit/b71d037d871e005185af80d2ceb64f3d6957ce52))
+* **kedi:** ihtiyaçlar, mama kabı, yumak, arkadaşlıklar ve pencere sallama ([5438f29](https://github.com/furkanisikay/VeriCat/commit/5438f29bbfe5d43da467e7473dbe1eb914f1400d))
+
 ## 1.0.0 (2026-09-24)
 
 ### Yenilikler
