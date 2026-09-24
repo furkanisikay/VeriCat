@@ -106,6 +106,49 @@ public class ExtrasTests
     }
 
     [Fact]
+    public void Hop_jumps_onto_a_window_right_away_when_enabled()
+    {
+        var sim = new Sim(new VeriCat.Core.World.WindowSnapshot(9, new VeriCat.Core.Geometry.RectU(300, -900, 1100, -800)));
+        var cat = sim.AddCat(700);
+
+        Assert.True(cat.Hop());
+        Assert.True(sim.RunUntil(() => cat.State == CatState.Air, 0.5));
+        Assert.True(sim.RunUntil(() => cat.State != CatState.Air, 3));
+        Assert.Equal(9, cat.Support?.Owner);
+    }
+
+    [Fact]
+    public void Hop_does_nothing_when_windows_are_off_or_cat_is_busy()
+    {
+        var sim = new Sim(new VeriCat.Core.World.WindowSnapshot(9, new VeriCat.Core.Geometry.RectU(300, -900, 1100, -800)));
+        var cat = sim.AddCat(700);
+
+        sim.Settings.Windows = false;
+        Assert.False(cat.Hop());
+
+        sim.Settings.Windows = true;
+        cat.ForceState(CatState.Fight, 2);
+        Assert.False(cat.Hop());
+    }
+
+    [Fact]
+    public void Turning_chase_on_starts_play_and_off_stops_it()
+    {
+        var sim = new Sim();
+        var cat = sim.AddCat(500);
+
+        cat.PlayWithPointer();
+        Assert.Equal(CatState.Chase, cat.State);
+
+        cat.StopHunting();
+        Assert.Equal(CatState.Sit, cat.State);
+
+        sim.Settings.Chase = false;
+        cat.PlayWithPointer();
+        Assert.Equal(CatState.Sit, cat.State);
+    }
+
+    [Fact]
     public void Sitting_cat_is_redrawn_at_a_reduced_frame_rate()
     {
         var sim = new Sim();

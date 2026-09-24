@@ -127,6 +127,30 @@ public sealed partial class Cat
 
     bool summoned;
 
+    /// <summary>Boştaysa hemen yakındaki bir pencereye (ya da pencere içine) zıplar. Ayar açılınca etkisi görünsün diye.</summary>
+    public bool Hop()
+    {
+        if (Paused || !IsIdle || !Settings.Windows) return false;
+        return TryJump();
+    }
+
+    /// <summary>Boştaysa imleçle oynamaya başlar (kovalama → pusu → yumruk).</summary>
+    public void PlayWithPointer()
+    {
+        if (Paused || !IsIdle || !Settings.Chase) return;
+        Set(CatState.Chase, 3, 5);
+    }
+
+    /// <summary>Kovalama kapatılınca avı bırakıp oturur.</summary>
+    public void StopHunting()
+    {
+        if (state is CatState.Chase or CatState.Stalk or CatState.Swat) Set(CatState.Sit, 1, 2);
+        pouncing = false;
+    }
+
+    /// <summary>Başka bir işle meşgul değil (yürüyor, oturuyor, uyuyor ya da seviniyor).</summary>
+    bool IsIdle => platform != null && state is CatState.Walk or CatState.Sit or CatState.Sleep or CatState.Happy;
+
     public void Meow()
     {
         Voice.Meow(Config.Pitch);
