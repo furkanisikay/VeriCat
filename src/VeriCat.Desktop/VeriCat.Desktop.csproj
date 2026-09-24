@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Windows masaüstü kabuğu: tepsi uygulaması, saydam kedi pencereleri, Win32 pencere tarama, çizim ve ses çalma.
+    Tek dosyalık exe için: build/publish.ps1 (Windows) ya da build/publish.sh (macOS/Linux).
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- macOS/Linux üzerinde de derlenebilsin (CI ve çapraz derleme). -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>VeriCat</AssemblyName>
+    <RootNamespace>VeriCat.Desktop</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationVisualStyles>true</ApplicationVisualStyles>
+    <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VeriCat.Core\VeriCat.Core.csproj" />
+  </ItemGroup>
+
+</Project>

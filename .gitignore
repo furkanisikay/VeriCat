@@ -1,0 +1,24 @@
+# Derleme çıktıları
+bin/
+obj/
+out/
+artifacts/
+publish/
+*.exe
+
+# IDE
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.DotSettings.user
+
+# Test / kapsam
+TestResults/
+coverage*.xml
+*.coverage
+
+# İşletim sistemi
+.DS_Store
+Thumbs.db

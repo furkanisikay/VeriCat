@@ -1,0 +1,26 @@
+<Project>
+
+  <!-- Tüm projeler için ortak derleme ayarları. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>tr</SatelliteResourceLanguages>
+
+    <Product>VeriCat</Product>
+    <Company>Furkan IŞIKAY</Company>
+    <Authors>Furkan IŞIKAY</Authors>
+    <Copyright>© 2026 Furkan IŞIKAY</Copyright>
+    <Version>1.0.0</Version>
+    <NeutralLanguage>tr-TR</NeutralLanguage>
+  </PropertyGroup>
+
+  <!-- Merkezi paket sürümleri: Directory.Packages.props -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+</Project>
