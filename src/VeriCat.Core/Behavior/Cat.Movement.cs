@@ -103,6 +103,8 @@ public sealed partial class Cat
     /// <summary>Yakındaki bir pencereye, pencere içindeki bir bölüme ya da zemine balistik bir zıplama planlar.</summary>
     internal bool TryJump()
     {
+        if (Rng.NextDouble() < 0.3 && TryHangJump()) return true;   // ara ara tepedeki kenara asılır
+        if (Rng.NextDouble() < 0.12 && TryCurtainClimb()) return true;   // tam ekran pencereye perde gibi tırmanır
         double s = S, maxUp = MaxJumpHeight, reach = 450 * D;
         var cur = platform;
         // "Ara ara": zıplamaların bir kısmında pencere içlerindeki raflar da hedef olur.
@@ -185,6 +187,7 @@ public sealed partial class Cat
         }
         px = nx; py = ny;
         if (pouncing) PounceStrike();
+        if (CatchEdge()) return;
 
         double s = S, lo = World.MinX + 35 * s, hi = World.MaxX - 35 * s;
         if (px < lo) { px = lo; vx = Math.Abs(vx) * 0.4; }
@@ -207,10 +210,13 @@ public sealed partial class Cat
         rideChangedAt = Now;
         landSquash = Math.Clamp(impactSpeed / (1500 * D), 0, 1);
         landClock = clock;
-        gait = 0;
-        bool wasPouncing = pouncing, wasFlung = flung, wasHunting = hunting;
-        pouncing = false; flung = false; wallKicks = 0;
+        if (hopResume == null) gait = 0;             // üstünden atlayış: hızını kaybetmeden sürdürür
+        bool wasPouncing = pouncing, wasFlung = flung, wasHunting = hunting, wasPlayful = playful;
+        var resume = hopResume;
+        pouncing = false; flung = false; wallKicks = 0; hangTarget = null; hopResume = null;
         if (goal != Goal.None) { var keep = goal; Set(CatState.Seek, 12, 12); goal = keep; }   // hedefe yürümeye devam
+        else if (resume == CatState.Flee) { Set(CatState.Flee, 0.6, 1.2); playful = wasPlayful; }
+        else if (resume is CatState.Walk or CatState.Chase) Set(resume.Value, 1.2, 3);
         else if (wasFlung) Set(CatState.Sit, 1.5, 2.5);
         else if (wasHunting && Settings.Chase) Set(CatState.Chase, 3, 5);             // basamak: kovalamaya devam
         else if (wasPouncing && Settings.Chase && Rng.NextDouble() < 0.5) Set(CatState.Chase, 2, 4);

@@ -48,7 +48,7 @@ public sealed partial class Cat
         {   // sadece tıklandı
             Voice.Meow(Config.Pitch);
             Vitals.Cuddle(0.02);
-            if (state is not (CatState.Air or CatState.Crouch or CatState.Climb)) Set(CatState.Happy, 1.6, 2.4);
+            if (state is not (CatState.Air or CatState.Crouch or CatState.Climb or CatState.Hang)) Set(CatState.Happy, 1.6, 2.4);
             return;
         }
         dragging = false;
@@ -120,7 +120,7 @@ public sealed partial class Cat
     /// <summary>İmlecin yanına gelir ve sevinir (yumruk atmaz).</summary>
     public void Summon()
     {
-        if (state is CatState.Air or CatState.Dragged or CatState.Crouch or CatState.Climb) return;
+        if (state is CatState.Air or CatState.Dragged or CatState.Crouch or CatState.Climb or CatState.Hang) return;
         summoned = true;
         Set(CatState.Chase, 8, 8);
         if (Rng.Next(2) == 0) Voice.Meow(Config.Pitch);
@@ -161,7 +161,7 @@ public sealed partial class Cat
 
     public void Sleep()
     {
-        if (state is not (CatState.Air or CatState.Dragged or CatState.Crouch or CatState.Climb)) Set(CatState.Sleep, 15, 30);
+        if (state is not (CatState.Air or CatState.Dragged or CatState.Crouch or CatState.Climb or CatState.Hang)) Set(CatState.Sleep, 15, 30);
     }
 
     public void Wake()

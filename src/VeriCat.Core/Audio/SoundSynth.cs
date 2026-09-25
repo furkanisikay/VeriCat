@@ -140,6 +140,35 @@ public static class SoundSynth
         return Wav(s, 0.35);
     }
 
+    /// <summary>
+    /// Tırmalama: pençeler kumaşa/yüzeye takılıp çekilir. 2–4 hızlı darbe; her biri iplik iplik takılan (pürüzlü)
+    /// 1.5–6 kHz arası gürültü, sonu hafifçe tizleşir.
+    /// </summary>
+    public static byte[] Scratch(Random random)
+    {
+        int strokes = 2 + random.Next(3);
+        var parts = new List<double>();
+        var band = new Resonator(); var grit = new Resonator();
+        for (int k = 0; k < strokes; k++)
+        {
+            double len = 0.05 + random.NextDouble() * 0.05;
+            int n = (int)(Rate * len), gap = (int)(Rate * (0.025 + random.NextDouble() * 0.04));
+            double grain = 0, level = 0.7 + random.NextDouble() * 0.3;
+            for (int i = 0; i < n; i++)
+            {
+                double u = (double)i / n;
+                if (random.NextDouble() < 0.004) grain = 1;              // lif koptu: küçük tık
+                grain *= 0.994;
+                double white = random.NextDouble() * 2 - 1;
+                double y = band.Band(white, 2400 + 2600 * u, 1.3) + 0.6 * grit.Band(white, 5500, 2) * (0.3 + grain);
+                double env = Math.Min(1, u / 0.12) * Math.Pow(1 - u, 1.2) * (0.6 + 0.4 * Math.Abs(Math.Sin(u * 38 + k)));
+                parts.Add(y * env * level);
+            }
+            for (int i = 0; i < gap; i++) parts.Add(0);
+        }
+        return Wav(RemoveDc(parts.ToArray()), 0.2);
+    }
+
     /// <summary>16-bit mono PCM WAV, tepe değer <paramref name="peakLevel"/>'e normalize.</summary>
     public static byte[] Wav(double[] samples, double peakLevel)
     {

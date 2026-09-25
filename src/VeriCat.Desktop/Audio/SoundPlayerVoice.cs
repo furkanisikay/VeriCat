@@ -14,8 +14,9 @@ internal sealed class SoundPlayerVoice : ICatVoice, IDisposable
     SoundPlayer? player;
     MemoryStream? current;
     byte[]? purr, swat;
+    byte[][]? scratches;
     byte[][]? hisses;
-    double purrUntil, hissUntil;
+    double purrUntil, hissUntil, scratchUntil;
 
     public SoundPlayerVoice(AppSettings settings, Func<double> clock)
     {
@@ -51,6 +52,14 @@ internal sealed class SoundPlayerVoice : ICatVoice, IDisposable
     {
         if (!settings.Sound) return;
         Play(swat ??= SoundSynth.Swat(random));
+    }
+
+    public void Scratch()
+    {
+        if (!settings.Sound || clock() < scratchUntil) return;
+        scratchUntil = clock() + 0.4;
+        scratches ??= Enumerable.Range(0, 3).Select(_ => SoundSynth.Scratch(random)).ToArray();
+        Play(scratches[random.Next(scratches.Length)]);
     }
 
     void Play(byte[] wav)

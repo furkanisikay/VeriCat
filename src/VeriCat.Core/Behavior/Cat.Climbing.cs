@@ -29,6 +29,8 @@ public sealed partial class Cat
             wallCheckAt = stateTime + 0.5;
             if (Settings.Windows && TryHopToward(mx, my)) return true;
         }
+        // İmlecin altında ve arkada tam ekran bir pencere var: perdeye tırmanır gibi ona tırmanır.
+        if (Math.Abs(mx - px) < 250 * S && TryCurtainClimb(hunt: true)) return true;
         if (NearestWall(mx) is not (double wallX, bool right)) return false;
 
         double toWall = wallX - px;
@@ -114,7 +116,7 @@ public sealed partial class Cat
         // Tırmanma gücü: enerjik ve dinç kedi daha uzun tırmanır.
         double stamina = R(2.6, 4.0) * (0.6 + 0.8 * Traits.Energy) * (0.55 + 0.45 * Vitals.Energy);
         Set(CatState.Climb, stamina, stamina);
-        climbPhase = 0;
+        climbPhase = 0; nextScratch = 0;
     }
 
     /// <summary>
@@ -144,6 +146,7 @@ public sealed partial class Cat
         if (!tired)
         {
             // Sıçrayışlı tırmanış: her adımda arka ayaklarla itip yükselir, arada neredeyse durur.
+            if (atTop && stateTime >= nextScratch) { nextScratch = stateTime + R(0.6, 1.2); Voice.Scratch(); }   // tepede tırmalar
             climbPhase += dt * 1.9 * Config.Speed;
             double push = Math.Pow(Math.Max(0, Math.Sin(ClimbCycle * 2 * Math.PI)), 1.5);
             py = Math.Min(top, py + (60 + 650 * push) * S * Config.Speed * dt);

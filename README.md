@@ -18,8 +18,9 @@ Windows 10/11 · .NET 10 · kurulum gerektirmeyen tek exe · kendini GitHub'dan 
 | **Eşyalar** | **Yumak**: fırlat, seker, yuvarlanır; kediler peşinden koşup pati atar, birbirinden kapar. **Mama kabı**: koy, doldur (çift tık); aç kediler gelip yer, mama azalır. Eşyalar da pencerelerin üstünde durur, fareyle fırlatılabilir. |
 | **İlişkiler** | Kediler kiminle kavga ettiğini ve kiminle selamlaştığını hatırlar. Arkadaşlar daha az kavga eder, yan yana kıvrılıp uyur; rakipler karşılaşınca tıslar. |
 | **Gün döngüsü** | Gece (23:00–07:00) kediler çok daha fazla uyur. |
+| **Asılma ve perde** | Üstünde duracak yer olmayan (ekranın tepesine yakın) pencere kenarına ön patileriyle asılır, arka ayaklarıyla tırmalar; pencere tepeye itilirse düşmez, asılı kalır. Tam ekran pencereye perdeye tırmanır gibi tırmanır, tepede asılı kalır, oradan imlece atlar. |
 | **Pencere içleri** | Ara ara pencerelerin içindeki bölümlerin (araç çubuğu, panel, liste…) üst kenarlarına da zıplar. |
-| **Kediler arası** | Aynı zemindeki kediler birbirinin içinden geçmez. Karşılaşınca geri döner, selamlaşır ya da kavga eder (kabarık kuyruk, tıslama, toz bulutu). Kaybeden kaçar. |
+| **Kediler arası** | Kediler birbirini itmez: yoluna çıkan kedinin (ve mama kabının, yumağın) üstünden atlar, karşıdan gelen durup yol verir. Karşılaşınca selamlaşır, kovalamaca oynar (yakalayınca roller değişir) ya da kavga eder (kabarık kuyruk, tıslama, toz bulutu). Kaybeden kaçar. |
 | **Okşama** | Fareyi tuşa basmadan kedinin üstünde gezdir: mırlar, kalpler çıkar. Bazen keyfi yoktur ve kaçar; çok okşanırsa pati atar. |
 | **Fare avı** | Pusu, üstüne atlama, arka ayaklar üstünde yumruk kombosu. İsabet eden yumruk imleci biraz iter (kapatılabilir). İmleç ne kadar yüksekte olursa olsun, kedi gerçekten isterse ulaşır: pencereleri basamak yapar, ekranın kenarına sıçrayıp tırmanır, duvardan sekip yükselir ve tepeden imlece atlar. |
 | **Tasma** | Renkli tasma ve üstünde okunaklı isim etiketi. |

@@ -39,7 +39,9 @@ public sealed partial class Cat
         {
             if (state == CatState.Air) { py = ceiling; vy = Math.Min(vy, 0); }
             else if (state == CatState.Climb) py = ceiling;
-            else Drop(0);   // üstünde durduğu pencere ekranın tepesine dayandı: sığmıyor, düşer
+            else if (state == CatState.Hang) { }        // asılıyken kafa kenarın altında, sığar
+            else if (platform is Platform { IsFloor: false } edge) StartHang(edge);   // pencere tepeye dayandı: kenara asılır
+            else Drop(0);
         }
 
         if (py < floor.Y && floor.Covers(px))

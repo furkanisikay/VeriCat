@@ -30,4 +30,6 @@ public enum CatState
     Eat,
     /// <summary>Ekranın kenarına tutunmuş, yüksekteki imlece tırmanıyor.</summary>
     Climb,
+    /// <summary>Üstünde yer olmayan pencere kenarına ön patileriyle asılmış, tırmalıyor.</summary>
+    Hang,
 }

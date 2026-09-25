@@ -139,6 +139,24 @@ internal sealed partial class CatPainter
         Head(P(90, 94 + bob), 7);
     }
 
+    /// <summary>
+    /// Kenara asılma: ön patiler kafanın iki yanından yukarı uzanıp kenarı (y≈128) kavramış, gövde aşağı sarkıyor,
+    /// arka ayaklar sırayla tırmalıyor, kuyruk dengede sallanıyor.
+    /// </summary>
+    void Hang()
+    {
+        float kick = MathF.Sin(f.Phase * MathF.PI * 2), sw = MathF.Sin(f.Clock * 1.7f) * 3;
+        Stroke(Bezier(P(75 + sw, 30), P(80 + sw, 18), P(68 + sw * 2, 12), P(74 + sw * 2.5f, 2)), 11, c.Fur, true);
+        Leg(P(64 + sw, 30), P(60 + sw + kick * 3, 14 + Math.Max(0, kick) * 7), 11.5f, c.Fur);
+        Leg(P(86 + sw, 30), P(90 + sw + kick * 3, 14 + Math.Max(0, -kick) * 7), 11.5f, c.Fur);
+        Fill(Oval(75 + sw, 48, 40, 50), c.Fur);
+        Fill(Oval(75 + sw, 44, 22, 30), c.Belly, false);
+        Stripe(P(64 + sw, 60), P(66 + sw, 50)); Stripe(P(84 + sw, 60), P(86 + sw, 50));
+        Paw(P(62 + sw * 0.6f, 64), P(56, 126), c.Fur);
+        Paw(P(88 + sw * 0.6f, 64), P(94, 126), c.Fur);
+        Head(P(75 + sw * 0.5f, 86), 0);
+    }
+
     /// <summary>Arka ayaklar üstünde dikilip imlece yumruk: bir pati uzanır, diğeri geride bekler.</summary>
     void Swat()
     {

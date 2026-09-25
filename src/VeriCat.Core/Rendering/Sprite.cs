@@ -1,6 +1,6 @@
 namespace VeriCat.Core.Rendering;
 
-public enum Pose { Walk, Air, Sit, Sleep, Dangle, Fight, Swat, Pounce, Eat, Climb }
+public enum Pose { Walk, Air, Sit, Sleep, Dangle, Fight, Swat, Pounce, Eat, Climb, Hang }
 
 public enum EyeKind { Open, Closed, Happy, Wide, Angry }
 
