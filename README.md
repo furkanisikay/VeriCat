@@ -13,7 +13,7 @@ Windows 10/11 · .NET 10 · kurulum gerektirmeyen tek exe · kendini GitHub'dan 
 |---|---|
 | **Özelleştirme** | İsim, kürk (hazır + özel renk), göz rengi, desen (çizgili, benekli, beyaz pati, beyaz göğüs), tasma rengi, aksesuar (zil, fiyonk, taç, çiçek, gözlük), boyut, hız, ses tonu. Tek tıkla rastgele kedi. |
 | **Karakter** | Her kedinin oyunculuk, huysuzluk, sevecenlik ve enerji ayarı var ve davranışı gerçekten değiştiriyor: kavgacı kedi daha çok kavga eder, sevecen kedi okşanmaya dayanır ve diğerleriyle selamlaşır, uykucu kedi daha çok uyur. |
-| **Fizik** | Yerçekimi, balistik zıplama, pencere taşınınca üstündeki kedi de kayar, çoklu monitör. Kediler hiçbir zaman ekranın dışına taşmaz. **Pencereyi hızlıca sallarsan üstündeki kedi (ve yumak) savrulur.** |
+| **Fizik** | Yerçekimi, balistik zıplama (yüksek zıplayıştan önce daha uzun çömelme, inişte yaylanma), kademeli hızlanma, pencere taşınınca üstündeki kedi de kayar, çoklu monitör. Kediler hiçbir zaman ekranın dışına taşmaz. **Pencereyi hızlıca sallarsan üstündeki kedi (ve yumak) savrulur.** |
 | **İhtiyaçlar** | Tokluk, sevgi, oyun ve enerji zamanla azalır. Acıkan kedi mama kabına gider, kap boşsa gelip sana miyavlar; yalnız kalan yanına gelir; sıkılan yumağa saldırır; yorulan uyur. Kafasının üstündeki düşünce baloncuğu ne istediğini söyler. Kedi menüsünde çubuklarla görünür. Hiçbir şey cezalandırmaz; uygulama kapalıyken geçen zaman nazikçe işler. |
 | **Eşyalar** | **Yumak**: fırlat, seker, yuvarlanır; kediler peşinden koşup pati atar, birbirinden kapar. **Mama kabı**: koy, doldur (çift tık); aç kediler gelip yer, mama azalır. Eşyalar da pencerelerin üstünde durur, fareyle fırlatılabilir. |
 | **İlişkiler** | Kediler kiminle kavga ettiğini ve kiminle selamlaştığını hatırlar. Arkadaşlar daha az kavga eder, yan yana kıvrılıp uyur; rakipler karşılaşınca tıslar. |
@@ -21,7 +21,7 @@ Windows 10/11 · .NET 10 · kurulum gerektirmeyen tek exe · kendini GitHub'dan 
 | **Pencere içleri** | Ara ara pencerelerin içindeki bölümlerin (araç çubuğu, panel, liste…) üst kenarlarına da zıplar. |
 | **Kediler arası** | Aynı zemindeki kediler birbirinin içinden geçmez. Karşılaşınca geri döner, selamlaşır ya da kavga eder (kabarık kuyruk, tıslama, toz bulutu). Kaybeden kaçar. |
 | **Okşama** | Fareyi tuşa basmadan kedinin üstünde gezdir: mırlar, kalpler çıkar. Bazen keyfi yoktur ve kaçar; çok okşanırsa pati atar. |
-| **Fare avı** | Pusu, üstüne atlama, arka ayaklar üstünde yumruk kombosu. İsabet eden yumruk imleci biraz iter (kapatılabilir). |
+| **Fare avı** | Pusu, üstüne atlama, arka ayaklar üstünde yumruk kombosu. İsabet eden yumruk imleci biraz iter (kapatılabilir). İmleç ne kadar yüksekte olursa olsun, kedi gerçekten isterse ulaşır: pencereleri basamak yapar, ekranın kenarına sıçrayıp tırmanır, duvardan sekip yükselir ve tepeden imlece atlar. |
 | **Tasma** | Renkli tasma ve üstünde okunaklı isim etiketi. |
 | **Performans** | Oturan/uyuyan kediler düşük kare hızında çizilir, pencere içi tarama önbelleklenir, tam ekran uygulama (oyun, video, sunum) öndeyken kediler saklanır ve simülasyon tamamen durur. |
 | **Güncelleme** | GitHub'dan yeni sürümü denetler. İstersen arka planda sessizce güncellenir, istersen önce yenilikleri gösterip onay ister. İndirilen dosya SHA-256 ile doğrulanır. |

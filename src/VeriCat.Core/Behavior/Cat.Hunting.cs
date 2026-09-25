@@ -35,8 +35,9 @@ public sealed partial class Cat
     {
         if (!Settings.Chase || pointerSpeed < 900 * D || Now < huntCooldownUntil) return;
         double dx = Math.Abs(pointerX - px), dy = pointerY - py;
-        if (dx > 320 * S || dy < -60 * S || dy > MaxJumpHeight) return;
-        if (Rng.NextDouble() < dt * 3 * Traits.Playfulness) Set(CatState.Chase, 3, 6);
+        bool high = dy > MaxJumpHeight;                 // yüksekteki imleç de dikkat çeker, ama daha az
+        if (dx > (high ? 600 : 320) * S || dy < -60 * S) return;
+        if (Rng.NextDouble() < dt * 3 * Traits.Playfulness * (high ? 0.4 : 1)) Set(CatState.Chase, 3, 6);
     }
 
     void ChaseStep(double dt)
@@ -52,6 +53,11 @@ public sealed partial class Cat
             return;
         }
 
+        if (dy >= MaxJumpHeight * 0.95 && WantsNow())
+        {   // zıplayarak erişemez: pencereleri basamak yapar ya da duvara tırmanır
+            if (stateTime < 15) stateLength = Math.Max(stateLength, stateTime + 2);
+            if (ReachHighPointer(dt, mx, my)) return;
+        }
         if (adx < 50 * S)
         {
             if (dy > -10 * S && dy < 115 * S) { StartSwat(Rng.Next(2, 4), fleeAfter: false); return; }
@@ -65,6 +71,18 @@ public sealed partial class Cat
             return;
         }
         if (!Stride(dt, 175 * S * Config.Speed, false)) Set(CatState.Sit, 1.5, 3);
+    }
+
+    double highWantUntil, highRefuseUntil;
+
+    /// <summary>Yüksekteki imleç için uğraşmaya değer mi? Karar birkaç saniye geçerli kalır (her karede zar atılmaz).</summary>
+    bool WantsNow()
+    {
+        if (Now < highWantUntil) return true;
+        if (Now < highRefuseUntil) return false;
+        if (WantsHighPointer()) { highWantUntil = Now + R(8, 14); return true; }
+        highRefuseUntil = Now + R(3, 6);
+        return false;
     }
 
     /// <summary>Çömelmiş, kıçını sallıyor; süre dolunca imlece atlar.</summary>

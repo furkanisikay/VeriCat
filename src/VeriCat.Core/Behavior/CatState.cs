@@ -28,4 +28,6 @@ public enum CatState
     Seek,
     /// <summary>Mama kabından yiyor.</summary>
     Eat,
+    /// <summary>Ekranın kenarına tutunmuş, yüksekteki imlece tırmanıyor.</summary>
+    Climb,
 }

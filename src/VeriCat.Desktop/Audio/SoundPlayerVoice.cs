@@ -27,7 +27,7 @@ internal sealed class SoundPlayerVoice : ICatVoice, IDisposable
     {
         if (!settings.Sound) return;
         double f0 = pitch * (scared ? 1.35 : 0.92 + random.NextDouble() * 0.16);
-        Play(SoundSynth.Meow(f0, scared ? 0.38 : 0.45 + random.NextDouble() * 0.3));
+        Play(SoundSynth.Meow(f0, scared ? 0.38 : 0.45 + random.NextDouble() * 0.3, random, scared));
         purrUntil = 0;
     }
 
