@@ -7,4 +7,7 @@ public interface ICatVoice
     void Purr();
     void Hiss();
     void Swat();
+
+    /// <summary>Pençeleriyle tırmalama (kenara asılırken, duvara tutunurken).</summary>
+    void Scratch();
 }

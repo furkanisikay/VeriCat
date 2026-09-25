@@ -17,24 +17,58 @@ public class SocialTests
     }
 
     [Fact]
-    public void Cats_on_the_same_floor_never_pass_through_each_other()
+    public void Walking_cat_hops_over_the_other_instead_of_pushing()
     {
         var (sim, a, b) = WalkingTowardEachOther(fightChance: 0);
-        double min = a.ContactRadius + b.ContactRadius;
+        sim.Colony.RompChance = 0;
+        bool flew = false;
 
-        sim.Run(4, () => Assert.True(b.X - a.X >= min - 1e-6, $"iç içe geçtiler: {b.X - a.X:F1} < {min}"));
+        Assert.True(sim.RunUntil(() => { flew |= a.State == CatState.Air; return a.X > b.X + a.ContactRadius; }, 4),
+            "a, b'nin öbür yanına geçmeli");
+        Assert.True(flew, "üstünden atlamalı");
+        Assert.NotEqual(CatState.Fight, a.State);
     }
 
     [Fact]
-    public void Without_a_fight_they_bump_and_turn_back()
+    public void Walking_into_a_sitting_cat_hops_over_without_moving_it()
+    {
+        var sim = new Sim();
+        sim.Colony.RompChance = 0;
+        sim.Colony.GreetChance = 0;
+        sim.Colony.FightChance = 0;
+        var a = sim.AddCat(500);
+        var b = sim.AddCat(700);
+        a.ForceState(CatState.Walk, 1000); a.Face(right: true);
+
+        Assert.True(sim.RunUntil(() => a.X > 780 && a.Support != null, 5), "üstünden atlayıp inmeli");
+        Assert.Equal(700, b.X, 3);
+    }
+
+    [Fact]
+    public void Playful_meeting_turns_into_a_chase()
     {
         var (sim, a, b) = WalkingTowardEachOther(fightChance: 0);
+        sim.Colony.RompChance = 1;
 
-        sim.Run(3);
+        Assert.True(sim.RunUntil(() => a.State == CatState.Flee || b.State == CatState.Flee, 3));
+        var (runner, chaser) = a.State == CatState.Flee ? (a, b) : (b, a);
+        Assert.Equal(CatState.Seek, chaser.State);
+        Assert.Equal(runner.X > chaser.X, runner.FacingRight);   // kovalayandan uzağa
+        Assert.NotEqual(VeriCat.Core.Rendering.EyeKind.Wide, runner.MakeSprite().Eyes);   // korku değil, oyun
+    }
 
-        Assert.False(a.FacingRight);
-        Assert.True(b.FacingRight);
-        Assert.NotEqual(CatState.Fight, a.State);
+    [Fact]
+    public void Chaser_gives_a_head_start_and_then_catches_the_runner()
+    {
+        var (sim, a, b) = WalkingTowardEachOther(fightChance: 0);
+        sim.Colony.RompChance = 1;
+        Assert.True(sim.RunUntil(() => a.State == CatState.Flee || b.State == CatState.Flee, 3));
+        var (runner, chaser) = a.State == CatState.Flee ? (a, b) : (b, a);
+        int swats = sim.Voice.Swats;
+
+        sim.Run(0.3);
+        Assert.Equal(CatState.Seek, chaser.State);   // hemen yakalamaz
+        Assert.True(sim.RunUntil(() => sim.Voice.Swats > swats, 4), "yakalayıp pati değmeli");
     }
 
     [Fact]

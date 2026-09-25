@@ -33,7 +33,8 @@ Fizik y ekseni **yukarı** bakan bir sistemde çalışır (`y = -ekranY`). Dön�
 1. Saniyede 15 kez dünyayı tarar: `Win32WorldScanner` → anlık görüntüler → `WorldModel.Update` → `PlatformBuilder`.
 2. `Colony.Step(dt)`:
    - her kedinin durum makinesini ilerletir (`Cat.Step`),
-   - aynı zemindeki kediler arasındaki temasları çözer (itme, geri dönme, kavga başlatma),
+   - aynı zemindeki kediler arasındaki temasları çözer (üstünden atlama, yol verme, selam, kovalamaca, kavga),
+   - yoldaki duran eşyanın üstünden atlatır (`ResolveObstacles`),
    - her kedinin karesini görünümüne gönderir.
 
 ## Kedi durum makinesi
@@ -46,7 +47,9 @@ Fizik y ekseni **yukarı** bakan bir sistemde çalışır (`y = -ekranY`). Dön�
 | `Cat.Movement.cs` | Yürüme, pencereyle kayma, zıplama planı, düşme, iniş |
 | `Cat.Interaction.cs` | Sürükleme, tıklama, okşama |
 | `Cat.Hunting.cs` | İmleç kovalama, pusu, atlayış, yumruk |
-| `Cat.Social.cs` | Çarpışma tepkisi, kavga, kazanan seçimi |
+| `Cat.Hanging.cs` | Tepeye yakın kenara ön patilerle asılma, tam ekran pencereye perde gibi tırmanma |
+| `Cat.Climbing.cs` | Yüksekteki imleç: pencereden basamak, ekran kenarına sıçrama, tırmanma, duvardan sekme |
+| `Cat.Social.cs` | Üstünden atlama, yol verme, kovalamaca, kavga, kazanan seçimi |
 | `Cat.Needs.cs` | İhtiyaca göre hedef seçme, hedefe gitme, yeme, yumakla oynama, sokulma, düşünce baloncuğu |
 | `Cat.Bounds.cs` | Ekranda kalma |
 
@@ -57,9 +60,21 @@ Fizik y ekseni **yukarı** bakan bir sistemde çalışır (`y = -ekranY`). Dön�
   │                     │                    ▲
   │                     └──► Swat ───────────┘ (tekrar kovala / otur)
   │
+  │                     └──► (imleç çok yüksek) ──► pencereye zıpla | duvara sıçra ──► Climb ──► Air (Pounce)
   ├── temas ──► Fight ──► Flee (kaybeden) / Sit (kazanan)
   └── okşama ─► Petted ──► Happy | Swat → Flee | Flee
 ```
+
+## Yüksekteki imleç
+
+İmleç normal zıplama yüksekliğinin (`MaxJumpHeight`) üstündeyse kedi önce **ister mi** diye bakar (oyunculuk, sıkıntı,
+enerji; karar birkaç saniye geçerli). İsterse sırayla:
+
+1. İmlece yaklaştıran, zıplanabilecek en yüksek pencere kenarına zıplar; inince kovalamaya devam eder (basamak basamak).
+2. Yoksa imlece en yakın **kapalı** ekran kenarına (yanında başka ekran olmayan) koşar ve duvara sıçrar.
+3. Duvara çarpan av zıplayışı: imleç duvardan uzaktaysa bir kez **duvardan seker** (daha yükseğe, imlece doğru),
+   değilse duvara **tutunur** (`Climb`). Tırmanış ritmiktir (itiş–duraklama), gücü karaktere ve enerjiye bağlıdır;
+   imleç menzile girince duvardan tepip atlar, gücü biterse kayıp bırakır.
 
 ## Platformlar
 

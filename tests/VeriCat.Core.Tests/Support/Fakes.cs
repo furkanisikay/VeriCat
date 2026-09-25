@@ -17,12 +17,13 @@ internal sealed class ScriptedRandom : Random
 
 internal sealed class FakeVoice : ICatVoice
 {
-    public int Meows, Purrs, Hisses, Swats;
+    public int Meows, Purrs, Hisses, Swats, Scratches;
 
     public void Meow(double pitch, bool scared = false) => Meows++;
     public void Purr() => Purrs++;
     public void Hiss() => Hisses++;
     public void Swat() => Swats++;
+    public void Scratch() => Scratches++;
 }
 
 internal sealed class FakePointer : IPointer

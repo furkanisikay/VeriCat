@@ -38,13 +38,16 @@ public sealed partial class Cat
         if (py > ceiling)
         {
             if (state == CatState.Air) { py = ceiling; vy = Math.Min(vy, 0); }
-            else Drop(0);   // üstünde durduğu pencere ekranın tepesine dayandı: sığmıyor, düşer
+            else if (state == CatState.Climb) py = ceiling;
+            else if (state == CatState.Hang) { }        // asılıyken kafa kenarın altında, sığar
+            else if (platform is Platform { IsFloor: false } edge) StartHang(edge);   // pencere tepeye dayandı: kenara asılır
+            else Drop(0);
         }
 
         if (py < floor.Y && floor.Covers(px))
         {
             py = floor.Y;
-            if (state == CatState.Air) Land(floor, -vy);
+            if (state is CatState.Air or CatState.Climb) Land(floor, -vy);
             else platform ??= floor;
         }
     }
@@ -54,7 +57,8 @@ public sealed partial class Cat
         double dx = x - px;
         px = x;
         if (state == CatState.Fight) fightAnchor += dx;
-        if (state == CatState.Air) vx = towardRight ? Math.Abs(vx) * 0.4 : -Math.Abs(vx) * 0.4;
+        if (state == CatState.Air && !OnWallContact(wallOnRight: !towardRight))
+            vx = towardRight ? Math.Abs(vx) * 0.4 : -Math.Abs(vx) * 0.4;
         else if (state is CatState.Walk or CatState.Flee) facingRight = towardRight;   // kenardan dön
     }
 }

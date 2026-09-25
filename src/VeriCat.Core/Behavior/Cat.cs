@@ -84,6 +84,8 @@ public sealed partial class Cat
         {
             case CatState.Dragged: break;
             case CatState.Air: Fly(dt); break;
+            case CatState.Climb: ClimbStep(dt); break;
+            case CatState.Hang: HangStep(dt); break;
             default:
                 if (!OnSupport()) { if (state != CatState.Air) Drop(0); break; }   // Air: pencereden savruldu
                 switch (state)
@@ -95,10 +97,10 @@ public sealed partial class Cat
                     case CatState.Chase: ChaseStep(dt); break;
                     case CatState.Stalk: StalkStep(); break;
                     case CatState.Swat: SwatStep(); break;
-                    case CatState.Flee: Stride(dt, 260 * S * Config.Speed, true); break;
+                    case CatState.Flee: Stride(dt, (playful ? 200 : 260) * S * Config.Speed, true); break;
                     case CatState.Petted: PettedStep(dt); break;
                     case CatState.Fight: FightStep(); break;
-                    case CatState.Crouch when stateTime >= 0.22: Launch(); break;
+                    case CatState.Crouch when stateTime >= CrouchTime: Launch(); break;
                 }
                 if (state is not (CatState.Crouch or CatState.Air or CatState.Fight or CatState.Swat or CatState.Petted or CatState.Stalk
                         or CatState.Eat)
@@ -125,6 +127,11 @@ public sealed partial class Cat
         if (s != CatState.Chase) summoned = false;
         if (s != CatState.Seek) goal = Goal.None;
         if (s != CatState.Swat) swatProp = null;
+        if (s is not (CatState.Walk or CatState.Chase or CatState.Seek or CatState.Flee)) gait = 0;
+        if (s != CatState.Crouch) { hopResume = null; hangTarget = null; }
+        if (s != CatState.Hang) curtain = 0;
+        if (s is not (CatState.Flee or CatState.Crouch)) playful = false;
+        if (s is not (CatState.Crouch or CatState.Chase or CatState.Stalk or CatState.Climb)) hunting = false;
         state = s; stateTime = 0; stateLength = R(min, max);
     }
 
@@ -198,6 +205,9 @@ public sealed partial class Cat
             case CatState.Eat:
                 f.Pose = Pose.Eat; f.Phase = (float)(stateTime * 2.2 % 1); f.Eyes = EyeKind.Happy;
                 break;
+            case CatState.Flee when playful:
+                f.Pose = Pose.Walk; f.Phase = (float)phase; f.Eyes = EyeKind.Happy;
+                break;
             case CatState.Flee:
                 f.Pose = Pose.Walk; f.Phase = (float)phase; f.Eyes = EyeKind.Wide; f.EarsBack = true;
                 break;
@@ -221,6 +231,14 @@ public sealed partial class Cat
                 f.Lean = (float)(Math.Sin(clock * 2.4) * 0.12);
                 break;
             case CatState.Sleep: f.Pose = Pose.Sleep; f.Eyes = EyeKind.Closed; break;
+            case CatState.Hang:
+                f.Pose = Pose.Hang; f.Phase = (float)(stateTime * 2.4 % 1);
+                f.Eyes = stateTime < 0.6 ? EyeKind.Wide : EyeKind.Open;
+                break;
+            case CatState.Climb:
+                f.Pose = Pose.Climb; f.Phase = (float)ClimbCycle; f.Eyes = EyeKind.Wide;
+                f.EarsBack = stateTime >= stateLength;          // kayarken kulaklar geride
+                break;
             case CatState.Dragged: f.Pose = Pose.Dangle; f.Eyes = EyeKind.Wide; break;
             case CatState.Fight:
                 f.Pose = Pose.Fight; f.Eyes = EyeKind.Angry; f.EarsBack = true; f.Puffed = true;
@@ -230,6 +248,13 @@ public sealed partial class Cat
                 f.Pose = Pose.Swat; f.Eyes = EyeKind.Wide;
                 f.Phase = (float)SwatProgress(); f.Arm = punchIndex % 2; f.Aim = (float)aim;
                 break;
+        }
+        // İniş: dört ayak üstüne düşüp dizlerini kırarak yaylanır.
+        double sinceLand = clock - landClock;
+        if (landSquash > 0.15 && sinceLand < LandTime && f.Pose is Pose.Sit or Pose.Walk)
+        {
+            f.Pose = Pose.Walk;
+            f.Crouch = Math.Max(f.Crouch, (float)(landSquash * Math.Sin(Math.PI * Math.Min(1, sinceLand / LandTime + 0.35))));
         }
         if (impact > 0) f.Impact = (float)(ImpactLength - impact);
         if (flung && state == CatState.Air) { f.Eyes = EyeKind.Wide; f.EarsBack = true; }

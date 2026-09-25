@@ -11,6 +11,14 @@ public sealed partial class Cat
     double rideChangedAt;                             // pencerenin en son yer değiştirdiği an (hız için)
     double jx, jy;                                    // çömelme bitince uygulanacak zıplama hızı
     bool flung;                                       // sallanan pencereden savruldu (şaşkın yüz)
+    double gait, gaitDir;                             // yürüyüş hızı (kademeli), yönü
+    double landClock = double.MinValue, landSquash;   // iniş anı ve şiddeti (yaylanma)
+
+    /// <summary>İnişte bacakların yaylanma süresi.</summary>
+    const double LandTime = 0.28;
+
+    /// <summary>Zıplamadan önce çömelme süresi: yüksek zıplayışta daha uzun hazırlanır.</summary>
+    double CrouchTime => Math.Clamp(0.12 + 0.3 * jy / Math.Sqrt(2 * Gravity * MaxJumpHeight), 0.14, 0.36);
 
     /// <summary>Hızla sallanan pencereden savrulur: şaşırır, bağırır.</summary>
     void Fling(double vxIn, double vyIn)
@@ -72,8 +80,11 @@ public sealed partial class Cat
     bool Stride(double dt, double speed, bool mayDrop, bool forceDrop = false)
     {
         double s = S, dir = Dir;
-        px += dir * speed * dt;
-        phase += dt * speed / (9 * s);
+        // Kademeli hızlanma: kedi yerinden fırlamaz, birkaç adımda hızlanır; dönüşte yavaşlar.
+        if (dir != gaitDir) { gait *= 0.25; gaitDir = dir; }
+        gait += (speed - gait) * Math.Min(1, dt * 7);
+        px += dir * gait * dt;
+        phase += dt * gait / (9 * s);
         double lo = World.MinX + 35 * s, hi = World.MaxX - 35 * s;
         if (px < lo || px > hi) { px = Math.Clamp(px, lo, hi); facingRight = !facingRight; return false; }
         if (platform is not Platform p || (px >= p.MinX && px <= p.MaxX)) return true;
@@ -92,6 +103,8 @@ public sealed partial class Cat
     /// <summary>Yakındaki bir pencereye, pencere içindeki bir bölüme ya da zemine balistik bir zıplama planlar.</summary>
     internal bool TryJump()
     {
+        if (Rng.NextDouble() < 0.3 && TryHangJump()) return true;   // ara ara tepedeki kenara asılır
+        if (Rng.NextDouble() < 0.12 && TryCurtainClimb()) return true;   // tam ekran pencereye perde gibi tırmanır
         double s = S, maxUp = MaxJumpHeight, reach = 450 * D;
         var cur = platform;
         // "Ara ara": zıplamaların bir kısmında pencere içlerindeki raflar da hedef olur.
@@ -174,6 +187,7 @@ public sealed partial class Cat
         }
         px = nx; py = ny;
         if (pouncing) PounceStrike();
+        if (CatchEdge()) return;
 
         double s = S, lo = World.MinX + 35 * s, hi = World.MaxX - 35 * s;
         if (px < lo) { px = lo; vx = Math.Abs(vx) * 0.4; }
@@ -194,10 +208,17 @@ public sealed partial class Cat
         riding = World.Frames.TryGetValue(p.Owner, out var r) ? r : null;
         vx = vy = 0;
         rideChangedAt = Now;
-        bool wasPouncing = pouncing, wasFlung = flung;
-        pouncing = false; flung = false;
+        landSquash = Math.Clamp(impactSpeed / (1500 * D), 0, 1);
+        landClock = clock;
+        if (hopResume == null) gait = 0;             // üstünden atlayış: hızını kaybetmeden sürdürür
+        bool wasPouncing = pouncing, wasFlung = flung, wasHunting = hunting, wasPlayful = playful;
+        var resume = hopResume;
+        pouncing = false; flung = false; wallKicks = 0; hangTarget = null; hopResume = null;
         if (goal != Goal.None) { var keep = goal; Set(CatState.Seek, 12, 12); goal = keep; }   // hedefe yürümeye devam
+        else if (resume == CatState.Flee) { Set(CatState.Flee, 0.6, 1.2); playful = wasPlayful; }
+        else if (resume is CatState.Walk or CatState.Chase) Set(resume.Value, 1.2, 3);
         else if (wasFlung) Set(CatState.Sit, 1.5, 2.5);
+        else if (wasHunting && Settings.Chase) Set(CatState.Chase, 3, 5);             // basamak: kovalamaya devam
         else if (wasPouncing && Settings.Chase && Rng.NextDouble() < 0.5) Set(CatState.Chase, 2, 4);
         else if (impactSpeed > 1500 * D) Set(CatState.Sit, 1.2, 2.2);
         else Set(CatState.Sit, 0.3, 1.0);

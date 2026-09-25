@@ -8,7 +8,7 @@ namespace VeriCat.Core.Behavior;
 // ihtiyacını düşünce baloncuğuyla belli etmek; kap boşsa gelip sana miyavlamak.
 public sealed partial class Cat
 {
-    enum Goal { None, Eat, Play, Cuddle, AskFood, AskLove }
+    enum Goal { None, Eat, Play, Cuddle, AskFood, AskLove, Romp }
 
     Goal goal;
     Prop? goalProp, eatProp;
@@ -72,6 +72,12 @@ public sealed partial class Cat
         nextJumpTry = 0.5;
     }
 
+    /// <summary>Şu an bu eşyaya mı gidiyor (ya da ondan yiyor)?</summary>
+    internal bool IsHeadingFor(Prop p) => (goal != Goal.None && goalProp == p) || eatProp == p;
+
+    /// <summary>Şu an bu kediye mi gidiyor (sokulmak, kovalamak)?</summary>
+    internal bool IsHeadingFor(Cat c) => goal != Goal.None && goalCat == c;
+
     /// <summary>Hareket eden yumak yakındaysa oyuncu kedi peşine düşer.</summary>
     void NoticeToys(double dt)
     {
@@ -94,6 +100,9 @@ public sealed partial class Cat
                 return (f.px + side * (ContactRadius + f.ContactRadius + 1), f.py, fp);
             case Goal.AskFood or Goal.AskLove:
                 return (Pointer.Position.X, py, null);   // imleç: yalnızca yatayda yanına gelir
+            case Goal.Romp:
+                if (goalCat is not { playful: true } r || r.state is not (CatState.Flee or CatState.Crouch or CatState.Air)) return null;
+                return (r.px, r.py, r.platform);
             default:
                 return null;
         }
@@ -104,13 +113,15 @@ public sealed partial class Cat
         Goal.Eat => 36 * S + (goalProp?.Radius ?? 0),
         Goal.Play => 34 * S + (goalProp?.Radius ?? 0),
         Goal.Cuddle => 5 * S,
+        Goal.Romp => ContactRadius + (goalCat?.ContactRadius ?? 0) + 6 * S,
         _ => 60 * S,
     };
 
     void SeekStep(double dt)
     {
         if (GoalTarget() is not (double tx, _, var support)) { Set(CatState.Sit, 1, 2); return; }
-        double dx = tx - px, speed = 150 * S * Config.Speed;
+        if (goal == Goal.Romp && Now - rompStartedAt < RompHeadStart) { facingRight = tx > px; return; }   // avantaj tanır
+        double dx = tx - px, speed = (goal == Goal.Romp ? 280 : 150) * S * Config.Speed;
         bool sameLevel = support == null || Math.Abs(support.Value.Y - py) < 4 * D;
 
         if (sameLevel && Math.Abs(dx) <= ArriveDistance) { Arrive(); return; }
@@ -155,6 +166,18 @@ public sealed partial class Cat
                 facingRight = cat.px > px;
                 Set(CatState.Sleep, 20, 40);
                 Colony?.Bonds.Adjust(this, cat, 0.05);
+                return;
+            case Goal.Romp when cat != null:
+                // Yakaladı: pati değer, roller değişir (tur kaldıysa) ya da ikisi de sevinip oyunu bitirir.
+                facingRight = cat.px > px;
+                Voice.Swat();
+                Vitals.Play(0.08); cat.Vitals.Play(0.08);
+                if (rompRounds > 0 && Rng.NextDouble() < 0.6)
+                {
+                    RunPlayfully(cat, rompRounds - 1);
+                    cat.ChasePlayfully(this, rompRounds - 1);
+                }
+                else { Set(CatState.Happy, 1.2, 2); cat.Set(CatState.Happy, 1.2, 2); cat.facingRight = px > cat.px; }
                 return;
             case Goal.AskFood:
                 Set(CatState.Sit, 3, 5);
