@@ -2,6 +2,12 @@
 
 Bu dosya her sürümde otomatik güncellenir ([semantic-release](https://semantic-release.gitbook.io)). Elle düzenlemeyin.
 
+## [1.2.0](https://github.com/furkanisikay/VeriCat/compare/v1.1.1...v1.2.0) (2026-09-25)
+
+### Yenilikler
+
+* **kedi:** tırmanma, asılma, üstünden atlama, kovalamaca ve gerçekçi sesler ([#4](https://github.com/furkanisikay/VeriCat/issues/4)) ([3ed8e8c](https://github.com/furkanisikay/VeriCat/commit/3ed8e8c8e9c02694215e5c2b49626f8a5300db4a))
+
 ## [1.1.1](https://github.com/furkanisikay/VeriCat/compare/v1.1.0...v1.1.1) (2026-09-24)
 
 ### Düzeltmeler
